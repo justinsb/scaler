@@ -26,8 +26,8 @@ type FakeScalingpolicyV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeScalingpolicyV1alpha1) Examples(namespace string) v1alpha1.ExampleInterface {
-	return &FakeExamples{c, namespace}
+func (c *FakeScalingpolicyV1alpha1) ScalingPolicies(namespace string) v1alpha1.ScalingPolicyInterface {
+	return &FakeScalingPolicies{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

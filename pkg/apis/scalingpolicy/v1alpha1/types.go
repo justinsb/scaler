@@ -24,43 +24,43 @@ import (
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Example is a specification for an Example resource
-type Example struct {
+// ScalingPolicy is a specification for an ScalingPolicy resource
+type ScalingPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   ExampleSpec   `json:"spec"`
-	Status ExampleStatus `json:"status,omitempty"`
+	Spec   ScalingPolicySpec   `json:"spec"`
+	Status ScalingPolicyStatus `json:"status,omitempty"`
 }
 
-// ExampleSpec is the spec for an Example resource
-type ExampleSpec struct {
+// ScalingPolicySpec is the spec for an ScalingPolicy resource
+type ScalingPolicySpec struct {
 	Foo            string `json:"foo"`
 	Bar            bool   `json:"bar"`
 	DeploymentName string `json:"deploymentName"`
 	Replicas       *int32 `json:"replicas"`
 }
 
-// ExampleStatus is the status for an Example resource
-type ExampleStatus struct {
-	State             ExampleState `json:"state,omitempty"`
-	Message           string       `json:"message,omitempty"`
-	AvailableReplicas int32        `json:"availableReplicas"`
+// ScalingPolicyStatus is the status for an ScalingPolicy resource
+type ScalingPolicyStatus struct {
+	State             ScalingPolicyState `json:"state,omitempty"`
+	Message           string             `json:"message,omitempty"`
+	AvailableReplicas int32              `json:"availableReplicas"`
 }
 
-type ExampleState string
+type ScalingPolicyState string
 
 const (
-	ExampleStateCreated   ExampleState = "Created"
-	ExampleStateProcessed ExampleState = "Processed"
+	ScalingPolicyStateCreated   ScalingPolicyState = "Created"
+	ScalingPolicyStateProcessed ScalingPolicyState = "Processed"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ExampleList is a list of Example resources
-type ExampleList struct {
+// ScalingPolicyList is a list of ScalingPolicy resources
+type ScalingPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []Example `json:"items"`
+	Items []ScalingPolicy `json:"items"`
 }

@@ -31,44 +31,44 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// ExampleInformer provides access to a shared informer and lister for
-// Examples.
-type ExampleInformer interface {
+// ScalingPolicyInformer provides access to a shared informer and lister for
+// ScalingPolicies.
+type ScalingPolicyInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ExampleLister
+	Lister() v1alpha1.ScalingPolicyLister
 }
 
-type exampleInformer struct {
+type scalingPolicyInformer struct {
 	factory internalinterfaces.SharedInformerFactory
 }
 
-// NewExampleInformer constructs a new informer for Example type.
+// NewScalingPolicyInformer constructs a new informer for ScalingPolicy type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewExampleInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+func NewScalingPolicyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
-				return client.ScalingpolicyV1alpha1().Examples(namespace).List(options)
+				return client.ScalingpolicyV1alpha1().ScalingPolicies(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
-				return client.ScalingpolicyV1alpha1().Examples(namespace).Watch(options)
+				return client.ScalingpolicyV1alpha1().ScalingPolicies(namespace).Watch(options)
 			},
 		},
-		&scalingpolicy_v1alpha1.Example{},
+		&scalingpolicy_v1alpha1.ScalingPolicy{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func defaultExampleInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewExampleInformer(client, v1.NamespaceAll, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+func defaultScalingPolicyInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewScalingPolicyInformer(client, v1.NamespaceAll, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 }
 
-func (f *exampleInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&scalingpolicy_v1alpha1.Example{}, defaultExampleInformer)
+func (f *scalingPolicyInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&scalingpolicy_v1alpha1.ScalingPolicy{}, defaultScalingPolicyInformer)
 }
 
-func (f *exampleInformer) Lister() v1alpha1.ExampleLister {
-	return v1alpha1.NewExampleLister(f.Informer().GetIndexer())
+func (f *scalingPolicyInformer) Lister() v1alpha1.ScalingPolicyLister {
+	return v1alpha1.NewScalingPolicyLister(f.Informer().GetIndexer())
 }

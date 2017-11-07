@@ -4,7 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
-        "fake_example.go",
+        "fake_scalingpolicy.go",
         "fake_scalingpolicy_client.go",
     ],
     importpath = "github.com/justinsb/scaler/pkg/client/clientset/versioned/typed/scalingpolicy/v1alpha1/fake",

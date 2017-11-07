@@ -18,10 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
-// ExampleListerExpansion allows custom methods to be added to
-// ExampleLister.
-type ExampleListerExpansion interface{}
+// ScalingPolicyListerExpansion allows custom methods to be added to
+// ScalingPolicyLister.
+type ScalingPolicyListerExpansion interface{}
 
-// ExampleNamespaceListerExpansion allows custom methods to be added to
-// ExampleNamespaceLister.
-type ExampleNamespaceListerExpansion interface{}
+// ScalingPolicyNamespaceListerExpansion allows custom methods to be added to
+// ScalingPolicyNamespaceLister.
+type ScalingPolicyNamespaceListerExpansion interface{}

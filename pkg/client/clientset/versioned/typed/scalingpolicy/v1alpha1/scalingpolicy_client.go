@@ -25,7 +25,7 @@ import (
 
 type ScalingpolicyV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	ExamplesGetter
+	ScalingPoliciesGetter
 }
 
 // ScalingpolicyV1alpha1Client is used to interact with features provided by the scalingpolicy.kope.io group.
@@ -33,8 +33,8 @@ type ScalingpolicyV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ScalingpolicyV1alpha1Client) Examples(namespace string) ExampleInterface {
-	return newExamples(c, namespace)
+func (c *ScalingpolicyV1alpha1Client) ScalingPolicies(namespace string) ScalingPolicyInterface {
+	return newScalingPolicies(c, namespace)
 }
 
 // NewForConfig creates a new ScalingpolicyV1alpha1Client for the given config.

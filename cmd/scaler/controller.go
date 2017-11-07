@@ -70,7 +70,7 @@ type Controller struct {
 
 	deploymentsLister appslisters.DeploymentLister
 	deploymentsSynced cache.InformerSynced
-	foosLister        listers.ExampleLister
+	foosLister        listers.ScalingPolicyLister
 	foosSynced        cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
@@ -94,7 +94,7 @@ func NewController(
 	// obtain references to shared index informers for the Deployment and Foo
 	// types.
 	deploymentInformer := kubeInformerFactory.Apps().V1beta2().Deployments()
-	fooInformer := sampleInformerFactory.Scalingpolicy().V1alpha1().Examples()
+	fooInformer := sampleInformerFactory.Scalingpolicy().V1alpha1().ScalingPolicies()
 
 	// Create event broadcaster
 	// Add sample-controller types to the default Kubernetes Scheme so Events can be
@@ -252,7 +252,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the Foo resource with this namespace/name
-	foo, err := c.foosLister.Examples(namespace).Get(name)
+	foo, err := c.foosLister.ScalingPolicies(namespace).Get(name)
 	if err != nil {
 		// The Foo resource may no longer exist, in which case we stop
 		// processing.
@@ -321,7 +321,7 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) updateFooStatus(foo *samplev1alpha1.Example, deployment *appsv1beta2.Deployment) error {
+func (c *Controller) updateFooStatus(foo *samplev1alpha1.ScalingPolicy, deployment *appsv1beta2.Deployment) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
@@ -331,7 +331,7 @@ func (c *Controller) updateFooStatus(foo *samplev1alpha1.Example, deployment *ap
 	// update the Status block of the Foo resource. UpdateStatus will not
 	// allow changes to the Spec of the resource, which is ideal for ensuring
 	// nothing other than resource status has been updated.
-	_, err := c.sampleclientset.ScalingpolicyV1alpha1().Examples(foo.Namespace).Update(fooCopy)
+	_, err := c.sampleclientset.ScalingpolicyV1alpha1().ScalingPolicies(foo.Namespace).Update(fooCopy)
 	return err
 }
 
@@ -377,7 +377,7 @@ func (c *Controller) handleObject(obj interface{}) {
 			return
 		}
 
-		foo, err := c.foosLister.Examples(object.GetNamespace()).Get(ownerRef.Name)
+		foo, err := c.foosLister.ScalingPolicies(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			glog.V(4).Infof("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
@@ -391,7 +391,7 @@ func (c *Controller) handleObject(obj interface{}) {
 // newDeployment creates a new Deployment for a Foo resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the Foo resource that 'owns' it.
-func newDeployment(foo *samplev1alpha1.Example) *appsv1beta2.Deployment {
+func newDeployment(foo *samplev1alpha1.ScalingPolicy) *appsv1beta2.Deployment {
 	labels := map[string]string{
 		"app":        "nginx",
 		"controller": foo.Name,

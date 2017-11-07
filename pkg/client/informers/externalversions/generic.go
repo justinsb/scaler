@@ -53,8 +53,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=scalingpolicy.kope.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("examples"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Scalingpolicy().V1alpha1().Examples().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("scalingpolicies"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Scalingpolicy().V1alpha1().ScalingPolicies().Informer()}, nil
 
 	}
 

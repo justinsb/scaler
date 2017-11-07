@@ -24,8 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// Examples returns a ExampleInformer.
-	Examples() ExampleInformer
+	// ScalingPolicies returns a ScalingPolicyInformer.
+	ScalingPolicies() ScalingPolicyInformer
 }
 
 type version struct {
@@ -37,7 +37,7 @@ func New(f internalinterfaces.SharedInformerFactory) Interface {
 	return &version{f}
 }
 
-// Examples returns a ExampleInformer.
-func (v *version) Examples() ExampleInformer {
-	return &exampleInformer{factory: v.SharedInformerFactory}
+// ScalingPolicies returns a ScalingPolicyInformer.
+func (v *version) ScalingPolicies() ScalingPolicyInformer {
+	return &scalingPolicyInformer{factory: v.SharedInformerFactory}
 }
