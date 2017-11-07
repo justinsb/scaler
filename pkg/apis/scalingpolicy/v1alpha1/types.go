@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	autoscaling "k8s.io/api/autoscaling/v1"
 )
 
 // +genclient
@@ -35,6 +36,12 @@ type ScalingPolicy struct {
 
 // ScalingPolicySpec is the spec for an ScalingPolicy resource
 type ScalingPolicySpec struct {
+	// This is what HPA uses but I don’t love it
+
+	// reference to scaled resource; horizontal pod autoscaler will learn the current resource consumption
+	// and will set the desired number of pods by using its Scale subresource.
+	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef" protobuf:"bytes,1,opt,name=scaleTargetRef"`
+
 	Foo            string `json:"foo"`
 	Bar            bool   `json:"bar"`
 	DeploymentName string `json:"deploymentName"`
