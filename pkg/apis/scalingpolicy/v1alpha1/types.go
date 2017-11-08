@@ -17,8 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
@@ -42,10 +44,45 @@ type ScalingPolicySpec struct {
 	// and will set the desired number of pods by using its Scale subresource.
 	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef" protobuf:"bytes,1,opt,name=scaleTargetRef"`
 
-	Foo            string `json:"foo"`
-	Bar            bool   `json:"bar"`
-	DeploymentName string `json:"deploymentName"`
-	Replicas       *int32 `json:"replicas"`
+	Containers []ContainerScalingRule `json:"containers" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,2,rep,name=containers"`
+}
+
+// ScalingRule defines how container resources are scaled
+type ContainerScalingRule struct {
+	// Name of the container specified as a DNS_LABEL.
+	// Each container in a pod must have a unique name (DNS_LABEL).
+	// Cannot be updated.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+
+	// Compute Resources required by this container.
+	// cf Container resources
+	// +optional
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+}
+
+// ResourceScaling configures
+type ResourceRequirements struct {
+	// Limits describes the maximum amount of compute resources allowed.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	// +optional
+	Limits []ResourceScalingRule `json:"limits,omitempty" protobuf:"bytes,1,rep,name=limits,casttype=ResourceList,castkey=ResourceName"`
+	// Requests describes the minimum amount of compute resources required.
+	// If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+	// otherwise to an implementation-defined value.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	// +optional
+	Requests []ResourceScalingRule `json:"requests,omitempty" protobuf:"bytes,2,rep,name=requests,casttype=ResourceList,castkey=ResourceName"`
+}
+
+type ResourceScalingRule struct {
+	// Input is the source value to use as the input to scaling
+	Input string `json:"input,omitempty"`
+
+	Resource v1.ResourceName `json:"resource"`
+
+	Base resource.Quantity `json:"base,omitempty"`
+	Step resource.Quantity `json:"step,omitempty"`
+	Max  resource.Quantity `json:"max,omitempty"`
 }
 
 // ScalingPolicyStatus is the status for an ScalingPolicy resource
