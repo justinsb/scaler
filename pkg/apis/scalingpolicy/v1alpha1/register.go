@@ -47,5 +47,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ScalingPolicy{},
 		&ScalingPolicyList{},
 	)
+	meta_v1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
