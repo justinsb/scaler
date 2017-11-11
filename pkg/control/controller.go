@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/justinsb/scaler/cmd/scaler/options"
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
 	clientset "github.com/justinsb/scaler/pkg/client/clientset/versioned"
 	informers "github.com/justinsb/scaler/pkg/client/informers/externalversions"
@@ -78,12 +77,12 @@ type Controller struct {
 	// Kubernetes API.
 	recorder record.EventRecorder
 
-	policies *policies
+	state *State
 }
 
 // NewController returns a new sample controller
 func NewController(
-	options *options.AutoScalerConfig,
+	state *State,
 	kubeClient kubernetes.Interface,
 	scalerClient clientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
@@ -113,12 +112,7 @@ func NewController(
 		scalingPoliciesSynced: scalingPolicyInformer.Informer().HasSynced,
 		workqueue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScalingPolicies"),
 		recorder:              recorder,
-	}
-
-	var err error
-	controller.policies, err = newPolicies(kubeClient, options)
-	if err != nil {
-		return nil, err
+		state:                 state,
 	}
 
 	glog.Info("Setting up event handlers")
@@ -180,7 +174,7 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 
-	c.policies.Run(stopCh)
+	c.state.Run(stopCh)
 
 	glog.Info("Started workers")
 	<-stopCh
@@ -267,7 +261,7 @@ func (c *Controller) syncHandler(key string) error {
 		// The ScalingPolicy resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
-			c.policies.remove(namespace, name)
+			c.state.remove(namespace, name)
 			//runtime.HandleError(fmt.Errorf("scalingPolicy '%s' in work queue no longer exists", key))
 			return nil
 		}
@@ -275,7 +269,7 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	c.policies.upsert(scalingPolicy)
+	c.state.upsert(scalingPolicy)
 	return nil
 
 	//deploymentName := scalingPolicy.Spec.DeploymentName

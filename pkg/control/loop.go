@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type policies struct {
+type State struct {
 	client  kubernetes.Interface
 	patcher k8sclient.ResourcePatcher
 	options *options.AutoScalerConfig
@@ -24,8 +24,8 @@ type policies struct {
 	policies map[types.NamespacedName]*PolicyState
 }
 
-func newPolicies(client kubernetes.Interface, options *options.AutoScalerConfig) (*policies, error) {
-	p := &policies{
+func NewState(client kubernetes.Interface, options *options.AutoScalerConfig) (*State, error) {
+	p := &State{
 		client:   client,
 		options:  options,
 		policies: make(map[types.NamespacedName]*PolicyState),
@@ -45,7 +45,18 @@ func newPolicies(client kubernetes.Interface, options *options.AutoScalerConfig)
 	return p, nil
 }
 
-func (c *policies) Run(stopCh <-chan struct{}) {
+func (c *State) Query() map[string]*PolicyInfo {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	result := make(map[string]*PolicyInfo)
+	for k, v := range c.policies {
+		result[k.String()] = v.Query()
+	}
+	return result
+}
+
+func (c *State) Run(stopCh <-chan struct{}) {
 	go wait.Until(func() {
 		err := c.computeTargetValues()
 		if err != nil {
@@ -63,7 +74,7 @@ func (c *policies) Run(stopCh <-chan struct{}) {
 	}, c.options.PollPeriod, stopCh)
 }
 
-func (c *policies) remove(namespace, name string) {
+func (c *State) remove(namespace, name string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -74,7 +85,7 @@ func (c *policies) remove(namespace, name string) {
 	}
 }
 
-func (c *policies) upsert(o *scalingpolicy.ScalingPolicy) {
+func (c *State) upsert(o *scalingpolicy.ScalingPolicy) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -86,7 +97,7 @@ func (c *policies) upsert(o *scalingpolicy.ScalingPolicy) {
 	}
 }
 
-func (c *policies) computeTargetValues() error {
+func (c *State) computeTargetValues() error {
 	snapshot, err := c.factors.Snapshot()
 	if err != nil {
 		return err
@@ -105,7 +116,7 @@ func (c *policies) computeTargetValues() error {
 	return nil
 }
 
-func (c *policies) updateValues() error {
+func (c *State) updateValues() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 

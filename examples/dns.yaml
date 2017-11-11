@@ -13,6 +13,8 @@ spec:
       limits:
       - resource: cpu
         base: 200m
+        input: cores
+        step: 10m
       requests:
       - resource: cpu
         base: 100m

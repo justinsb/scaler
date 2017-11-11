@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "api.go",
+        "targets.go",
+    ],
+    importpath = "github.com/justinsb/scaler/pkg/http",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//cmd/scaler/options:go_default_library",
+        "//pkg/control:go_default_library",
+        "//vendor/github.com/golang/glog:go_default_library",
+    ],
+)

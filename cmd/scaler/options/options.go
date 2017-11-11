@@ -36,6 +36,7 @@ type AutoScalerConfig struct {
 	Kubeconfig   string
 	PrintVersion bool
 	DryRun       bool
+	ListenAPI    string
 }
 
 // NewAutoScalerConfig returns a Autoscaler config
@@ -59,6 +60,7 @@ func (c *AutoScalerConfig) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.Kubeconfig, "kubeconfig", c.Kubeconfig, "Path to a kubeconfig. Only required if running out-of-cluster.")
 	fs.BoolVar(&c.PrintVersion, "version", c.PrintVersion, "Print the version and exit.")
 	fs.BoolVar(&c.DryRun, "dry-run", c.DryRun, "Calculate updates for a target but does not apply the update.")
+	fs.StringVar(&c.ListenAPI, "listen-api", c.ListenAPI, "endpoint to listen on for informational interface")
 }
 
 //// InitFlags no// WordSepNormalizeFunc changes all flags that contain "_" separators

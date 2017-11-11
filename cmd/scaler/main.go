@@ -26,6 +26,7 @@ import (
 	clientset "github.com/justinsb/scaler/pkg/client/clientset/versioned"
 	informers "github.com/justinsb/scaler/pkg/client/informers/externalversions"
 	"github.com/justinsb/scaler/pkg/control"
+	"github.com/justinsb/scaler/pkg/http"
 	"github.com/justinsb/scaler/pkg/signals"
 	"github.com/justinsb/scaler/pkg/version"
 	"github.com/spf13/pflag"
@@ -87,13 +88,31 @@ func run(config *options.AutoScalerConfig) error {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	scalerInformerFactory := informers.NewSharedInformerFactory(scalingClient, time.Second*30)
 
-	controller, err := control.NewController(config, kubeClient, scalingClient, kubeInformerFactory, scalerInformerFactory)
+	state, err := control.NewState(kubeClient, config)
+	if err != nil {
+		return fmt.Errorf("error initializing: %v", err)
+	}
+
+	controller, err := control.NewController(state, kubeClient, scalingClient, kubeInformerFactory, scalerInformerFactory)
 	if err != nil {
 		return fmt.Errorf("error building controller: %v", err)
 	}
 
 	go kubeInformerFactory.Start(stopCh)
 	go scalerInformerFactory.Start(stopCh)
+
+	if config.ListenAPI != "" {
+		server, err := http.NewAPIServer(config, state)
+		if err != nil {
+			return fmt.Errorf("error creating APIServer: %v", err)
+		}
+		go func() {
+			err := server.Start(stopCh)
+			if err != nil {
+				glog.Fatalf("error starting APIServer: %v", err)
+			}
+		}()
+	}
 
 	if err = controller.Run(2, stopCh); err != nil {
 		return err

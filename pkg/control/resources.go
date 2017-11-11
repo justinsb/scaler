@@ -19,12 +19,12 @@ type PolicyState struct {
 	kubeClient kubernetes.Interface
 	options    *options.AutoScalerConfig
 
-	policies  *policies
+	policies  *State
 	policy    *scalingpolicy.ScalingPolicy
 	smoothing *scaling.Unsmoothed
 }
 
-func NewPolicyState(policies *policies, policy *scalingpolicy.ScalingPolicy) *PolicyState {
+func NewPolicyState(policies *State, policy *scalingpolicy.ScalingPolicy) *PolicyState {
 	s := &PolicyState{
 		kubeClient: policies.client,
 		options:    policies.options,
@@ -117,4 +117,20 @@ func (c *PolicyState) updateValues() error {
 	}
 
 	return nil
+}
+
+type PolicyInfo struct {
+	Policy *scalingpolicy.ScalingPolicy `json:"policy"`
+	State  *scaling.Info                `json:"state"`
+}
+
+func (c *PolicyState) Query() *PolicyInfo {
+	//c.mutex.Lock()
+	//defer c.mutex.Unlock()
+
+	info := &PolicyInfo{
+		Policy: c.policy,
+		State:  c.smoothing.Query(),
+	}
+	return info
 }
