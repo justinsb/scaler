@@ -1,15 +1,14 @@
 package scaling
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/debug"
+	"github.com/justinsb/scaler/pkg/factors/static"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"github.com/justinsb/scaler/pkg/factors/static"
 )
 
 func TestComputeResources(t *testing.T) {
@@ -253,20 +252,12 @@ func TestComputeResources(t *testing.T) {
 		}
 		actual, err := ComputeResources(snaphot, g.Policy)
 		if err != nil {
-			t.Errorf("unexpected error from test\npolicy=%v\nerror=%v", DebugPrint(g.Policy), err)
+			t.Errorf("unexpected error from test\npolicy=%v\nerror=%v", debug.Print(g.Policy), err)
 			continue
 		}
 		if !equality.Semantic.DeepEqual(actual, g.Expected) {
-			t.Errorf("test failure\nname=%s\npolicy=%v\n  actual=%v\nexpected=%v", g.Name, DebugPrint(g.Policy), DebugPrint(actual), DebugPrint(g.Expected))
+			t.Errorf("test failure\nname=%s\npolicy=%v\n  actual=%v\nexpected=%v", g.Name, debug.Print(g.Policy), debug.Print(actual), debug.Print(g.Expected))
 			continue
 		}
 	}
-}
-
-func DebugPrint(o interface{}) string {
-	b, err := json.Marshal(o)
-	if err != nil {
-		return fmt.Sprintf("error-marshalling[%v]", err)
-	}
-	return string(b)
 }

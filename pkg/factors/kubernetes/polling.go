@@ -1,12 +1,13 @@
 package kubernetes
 
 import (
-	"github.com/justinsb/scaler/pkg/factors"
-	"k8s.io/client-go/kubernetes"
-	v1 "k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"fmt"
 	"sync"
+
+	"github.com/justinsb/scaler/pkg/factors"
+	v1 "k8s.io/api/core/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type pollingKubernetesFactors struct {
@@ -85,7 +86,7 @@ func (s *pollingKubernetesSnapshot) Get(key string) (float64, bool, error) {
 	}
 }
 
-func (s *pollingKubernetesSnapshot) ensureNodeStats() (error) {
+func (s *pollingKubernetesSnapshot) ensureNodeStats() error {
 	if s.nodeCount != 0 {
 		return nil
 	}

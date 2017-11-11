@@ -17,10 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
+	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy"
 )
 
 // SchemeGroupVersion is group version used to register these objects

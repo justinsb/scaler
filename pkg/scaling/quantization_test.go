@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/debug"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -39,6 +40,14 @@ func TestQuantization(t *testing.T) {
 			Expected: "300M",
 		},
 		{
+			Name:  "Step with no base",
+			Input: "210M",
+			Rule: &scalingpolicy.QuantizationRule{
+				Step: resource.MustParse("100M"),
+			},
+			Expected: "300M",
+		},
+		{
 			Name:  "Quadratic step",
 			Input: "100M",
 			Rule: &scalingpolicy.QuantizationRule{
@@ -68,7 +77,7 @@ func TestQuantization(t *testing.T) {
 		actual := Quantize(q, g.Rule)
 
 		if actual.String() != g.Expected {
-			t.Errorf("test failure\npolicy=%v\n  actual=%v\nexpected=%v", DebugPrint(g.Rule), actual.String(), g.Expected)
+			t.Errorf("test failure\npolicy=%v\n  actual=%v\nexpected=%v", debug.Print(g.Rule), actual.String(), g.Expected)
 			continue
 		}
 	}

@@ -17,61 +17,87 @@ limitations under the License.
 package main
 
 import (
-	"flag"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/golang/glog"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
+	"github.com/justinsb/scaler/cmd/scaler/options"
 	clientset "github.com/justinsb/scaler/pkg/client/clientset/versioned"
 	informers "github.com/justinsb/scaler/pkg/client/informers/externalversions"
+	"github.com/justinsb/scaler/pkg/control"
 	"github.com/justinsb/scaler/pkg/signals"
-)
-
-var (
-	masterURL  string
-	kubeconfig string
+	"github.com/justinsb/scaler/pkg/version"
+	"github.com/spf13/pflag"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func main() {
-	flag.Parse()
+	config := options.NewAutoScalerConfig()
+	config.AddFlags(pflag.CommandLine)
+	config.InitFlags()
 
-	// set up signals so we handle the first shutdown signal gracefully
-	stopCh := signals.SetupSignalHandler()
-
-	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-	if err != nil {
-		glog.Fatalf("Error building kubeconfig: %s", err.Error())
+	if config.PrintVersion {
+		fmt.Printf("%s\n", version.VERSION)
+		os.Exit(0)
+	}
+	// Perform further validation of flags.
+	if err := config.ValidateFlags(); err != nil {
+		glog.Errorf("%v", err)
+		os.Exit(1)
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
+	err := run(config)
 	if err != nil {
-		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
-	}
-
-	exampleClient, err := clientset.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("Error building example clientset: %s", err.Error())
-	}
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
-
-	controller := NewController(kubeClient, exampleClient, kubeInformerFactory, exampleInformerFactory)
-
-	go kubeInformerFactory.Start(stopCh)
-	go exampleInformerFactory.Start(stopCh)
-
-	if err = controller.Run(2, stopCh); err != nil {
-		glog.Fatalf("Error running controller: %s", err.Error())
+		glog.Errorf("%v", err)
+		os.Exit(1)
 	}
 }
 
-func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+func run(config *options.AutoScalerConfig) error {
+	// set up signals so we handle the first shutdown signal gracefully
+	stopCh := signals.SetupSignalHandler()
+
+	var cfg *rest.Config
+	var err error
+	if config.Kubeconfig != "" {
+		cfg, err = clientcmd.BuildConfigFromFlags("", config.Kubeconfig)
+	} else {
+		cfg, err = rest.InClusterConfig()
+	}
+	if err != nil {
+		return err
+	}
+	// Use protobufs for communication with apiserver.
+	cfg.ContentType = "application/vnd.kubernetes.protobuf"
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+	scalingClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("error building scaling client: %v", err)
+	}
+
+	// TODO: Are these resync times way too low?
+
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	scalerInformerFactory := informers.NewSharedInformerFactory(scalingClient, time.Second*30)
+
+	controller, err := control.NewController(config, kubeClient, scalingClient, kubeInformerFactory, scalerInformerFactory)
+	if err != nil {
+		return fmt.Errorf("error building controller: %v", err)
+	}
+
+	go kubeInformerFactory.Start(stopCh)
+	go scalerInformerFactory.Start(stopCh)
+
+	if err = controller.Run(2, stopCh); err != nil {
+		return err
+	}
+
+	return nil
 }

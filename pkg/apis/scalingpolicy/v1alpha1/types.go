@@ -53,7 +53,7 @@ type QuantizationRule struct {
 	Base      resource.Quantity `json:"base,omitempty"`
 	Step      resource.Quantity `json:"step,omitempty"`
 	StepRatio float32           `json:"stepRatio,omitempty"`
-	MaxStep   resource.Quantity `json:"step,omitempty"`
+	MaxStep   resource.Quantity `json:"maxStep,omitempty"`
 }
 
 // ScalingRule defines how container resources are scaled

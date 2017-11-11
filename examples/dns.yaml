@@ -1,0 +1,21 @@
+apiVersion: scalingpolicy.kope.io/v1alpha1
+kind: ScalingPolicy
+metadata:
+  name: kube-dns
+  namespace: kube-system
+spec:
+  scaleTargetRef:
+    kind: deployment
+    name: kubernetes-dashboard
+  containers:
+  - name: kubernetes-dashboard
+    resources:
+      limits:
+      - resource: cpu
+        base: 200m
+      requests:
+      - resource: cpu
+        base: 100m
+    quantization:
+    - resource: cpu
+      step: 16m

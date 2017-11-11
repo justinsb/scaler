@@ -3,11 +3,11 @@ package scaling
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/factors"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"github.com/justinsb/scaler/pkg/factors"
-	"github.com/golang/glog"
 )
 
 // ComputeResources computes a list of resource quantities based on the input state and the specified policy
@@ -31,10 +31,26 @@ func ComputeResources(inputs factors.Snapshot, policy *scalingpolicy.ScalingPoli
 			return nil, err
 		}
 
+		applyQuantization(container.Resources.Limits, containerPolicy.Quantization)
+		applyQuantization(container.Resources.Requests, containerPolicy.Quantization)
+
 		podSpec.Containers = append(podSpec.Containers, container)
 	}
 
 	return podSpec, nil
+}
+
+func applyQuantization(resourceList v1.ResourceList, quantizationRules []scalingpolicy.QuantizationRule) {
+	for i := range quantizationRules {
+		rule := &quantizationRules[i]
+		resource, found := resourceList[rule.Resource]
+		if !found {
+			continue
+		}
+
+		resource = Quantize(resource, rule)
+		resourceList[rule.Resource] = resource
+	}
 }
 
 // buildResourceRequirements applies the list of rules to the current input state to compute a list of resource quantities
@@ -45,16 +61,6 @@ func buildResourceRequirements(inputs factors.Snapshot, rules []scalingpolicy.Re
 	accumulators := make(map[v1.ResourceName]*resourceAccumulator)
 	for i := range rules {
 		rule := &rules[i]
-
-		input, found, err := inputs.Get(rule.Input)
-		if err != nil {
-			return nil, fmt.Errorf("error reading %q: %v", rule.Input, err)
-		}
-
-		if !found {
-			glog.Warningf("value %q not found", rule.Input)
-			// We still continue, we just apply the base value
-		}
 
 		accumulator := accumulators[rule.Resource]
 		if accumulator == nil {
@@ -69,11 +75,23 @@ func buildResourceRequirements(inputs factors.Snapshot, rules []scalingpolicy.Re
 			v = rule.Base.ScaledValue(scale)
 		}
 
-		if found && !rule.Step.IsZero() {
-			accumulator.mergeFormat(&rule.Step)
+		if rule.Input != "" {
+			input, found, err := inputs.Get(rule.Input)
+			if err != nil {
+				return nil, fmt.Errorf("error reading %q: %v", rule.Input, err)
+			}
 
-			step := float64(rule.Step.ScaledValue(scale)) * input
-			v += int64(step)
+			if !found {
+				glog.Warningf("value %q not found", rule.Input)
+				// We still continue, we just apply the base value
+			}
+
+			if found && !rule.Step.IsZero() {
+				accumulator.mergeFormat(&rule.Step)
+
+				step := float64(rule.Step.ScaledValue(scale)) * input
+				v += int64(step)
+			}
 		}
 
 		accumulator.accumulateValue(v)

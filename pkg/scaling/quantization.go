@@ -3,6 +3,7 @@ package scaling
 import (
 	"github.com/golang/glog"
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/debug"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -54,6 +55,6 @@ func Quantize(q resource.Quantity, rule *scalingpolicy.QuantizationRule) resourc
 		}
 	}
 
-	glog.Warningf("quantization rule did not produce any results; returning original value")
+	glog.Warningf("quantization rule %s did not produce any results; returning original value", debug.Print(rule))
 	return q
 }
