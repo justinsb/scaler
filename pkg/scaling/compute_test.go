@@ -9,12 +9,13 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"github.com/justinsb/scaler/pkg/factors/static"
 )
 
 func TestComputeResources(t *testing.T) {
 	grid := []struct {
 		Name     string
-		Inputs   map[string]int64
+		Inputs   map[string]float64
 		Policy   *scalingpolicy.ScalingPolicySpec
 		Expected *v1.PodSpec
 	}{
@@ -55,7 +56,7 @@ func TestComputeResources(t *testing.T) {
 		},
 		{
 			Name: "Simple linear scale policy",
-			Inputs: map[string]int64{
+			Inputs: map[string]float64{
 				"pods": 10,
 			},
 			Policy: &scalingpolicy.ScalingPolicySpec{
@@ -90,7 +91,7 @@ func TestComputeResources(t *testing.T) {
 		},
 		{
 			Name: "Policy allows negative coefficients",
-			Inputs: map[string]int64{
+			Inputs: map[string]float64{
 				"pods": 5,
 			},
 			Policy: &scalingpolicy.ScalingPolicySpec{
@@ -125,7 +126,7 @@ func TestComputeResources(t *testing.T) {
 		},
 		{
 			Name: "Mixed units work",
-			Inputs: map[string]int64{
+			Inputs: map[string]float64{
 				"pods": 5,
 			},
 			Policy: &scalingpolicy.ScalingPolicySpec{
@@ -160,7 +161,7 @@ func TestComputeResources(t *testing.T) {
 		},
 		{
 			Name: "Multiple rules on same resource",
-			Inputs: map[string]int64{
+			Inputs: map[string]float64{
 				"nodes": 2,
 				"pods":  4,
 			},
@@ -201,7 +202,7 @@ func TestComputeResources(t *testing.T) {
 		},
 		{
 			Name: "Multiple resources",
-			Inputs: map[string]int64{
+			Inputs: map[string]float64{
 				"nodes": 2,
 				"pods":  4,
 			},
@@ -245,13 +246,18 @@ func TestComputeResources(t *testing.T) {
 	}
 
 	for _, g := range grid {
-		actual, err := ComputeResources(g.Inputs, g.Policy)
+		factors := static.NewStaticFactors(g.Inputs)
+		snaphot, err := factors.Snapshot()
+		if err != nil {
+			t.Errorf("snapshot failed: %v", err)
+		}
+		actual, err := ComputeResources(snaphot, g.Policy)
 		if err != nil {
 			t.Errorf("unexpected error from test\npolicy=%v\nerror=%v", DebugPrint(g.Policy), err)
 			continue
 		}
 		if !equality.Semantic.DeepEqual(actual, g.Expected) {
-			t.Errorf("test failure\npolicy=%v\n  actual=%v\nexpected=%v", DebugPrint(g.Policy), DebugPrint(actual), DebugPrint(g.Expected))
+			t.Errorf("test failure\nname=%s\npolicy=%v\n  actual=%v\nexpected=%v", g.Name, DebugPrint(g.Policy), DebugPrint(actual), DebugPrint(g.Expected))
 			continue
 		}
 	}

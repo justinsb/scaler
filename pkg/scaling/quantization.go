@@ -6,44 +6,23 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func asInt64(q resource.Quantity) (int64, bool) {
-	return q.Value(), true
-}
-
 func Quantize(q resource.Quantity, rule *scalingpolicy.QuantizationRule) resource.Quantity {
-	qInt, ok := asInt64(q)
-	if !ok {
-		glog.Warningf("ignoring out of range quantity %s", q)
-		return q
-	}
+	scale := resource.Milli
+
+	qInt := q.ScaledValue(scale)
 
 	var stepV float64
 	if !rule.Step.IsZero() {
-		stepInt, ok := asInt64(rule.Step)
-		if !ok {
-			// step will be treated as missing
-			glog.Warningf("ignoring out of range step value %s", rule.Step)
-		} else {
-			stepV = float64(stepInt)
-		}
+		stepInt := rule.Step.ScaledValue(scale)
+		stepV = float64(stepInt)
 	}
 	var maxStep float64
 	if !rule.MaxStep.IsZero() {
-		maxStepInt, ok := asInt64(rule.MaxStep)
-		if !ok {
-			// MaxStep will be treated as missing
-			glog.Warningf("ignoring out of range MaxStep value %s", rule.MaxStep)
-		} else {
-			maxStep = float64(maxStepInt)
-		}
+		maxStepInt := rule.MaxStep.ScaledValue(scale)
+		maxStep = float64(maxStepInt)
 	}
 
-	current, ok := asInt64(rule.Base)
-	if !ok {
-		// Base will be treated as missing, we will start from zero
-		glog.Warningf("ignoring out of range base value %s", rule.Base)
-		current = 0
-	}
+	current := rule.Base.ScaledValue(scale)
 
 	iteration := 0
 	maxIterationCount := 10000
@@ -56,10 +35,13 @@ func Quantize(q resource.Quantity, rule *scalingpolicy.QuantizationRule) resourc
 			break
 		}
 		if current >= qInt {
-			return *resource.NewQuantity(current, q.Format)
+			rq := *resource.NewScaledQuantity(current, scale)
+			rq.Format = q.Format
+			return rq
 		}
 
 		if int64(stepV) < 1 {
+			// We aren't going to make progress
 			break
 		}
 		current += int64(stepV)
