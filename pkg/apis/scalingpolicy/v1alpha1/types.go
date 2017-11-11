@@ -47,6 +47,15 @@ type ScalingPolicySpec struct {
 	Containers []ContainerScalingRule `json:"containers" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,2,rep,name=containers"`
 }
 
+type QuantizationRule struct {
+	Resource v1.ResourceName `json:"resource"`
+
+	Base      resource.Quantity `json:"base,omitempty"`
+	Step      resource.Quantity `json:"step,omitempty"`
+	StepRatio float32           `json:"stepRatio,omitempty"`
+	MaxStep   resource.Quantity `json:"step,omitempty"`
+}
+
 // ScalingRule defines how container resources are scaled
 type ContainerScalingRule struct {
 	// Name of the container specified as a DNS_LABEL.
@@ -58,6 +67,9 @@ type ContainerScalingRule struct {
 	// cf Container resources
 	// +optional
 	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+
+	// TODO: fix protobuf rules
+	Quantization []QuantizationRule `json:"quantization,omitempty" protobuf:"bytes,2,rep,name=quantization,casttype=ResourceList,castkey=ResourceName"`
 }
 
 // ResourceScaling configures
