@@ -42,6 +42,8 @@ func (h *Histogram) Add(t int64, q resource.Quantity) {
 	}
 }
 
+// Percentile returns the value at the given percentile
+// TODO: Multi-fetch, or store in a way that this isn't expensive
 func (h *Histogram) Percentile(ratio float32) (resource.Quantity, bool) {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -67,30 +69,30 @@ func (h *Histogram) Percentile(ratio float32) (resource.Quantity, bool) {
 	return *r, true
 }
 
-func (h *Histogram) EstimatePercentile(value *resource.Quantity) (float32, bool) {
-	qv := value.ScaledValue(h.Scale)
-
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
-	if len(h.values) < minObservationsForPercentile {
-		return 0, false
-	}
-
-	n := len(h.values)
-	if n == 0 {
-		return 0, false
-	}
-
-	x := 0
-	for i := 0; i < n; i++ {
-		if h.values[i].value <= qv {
-			x++
-		}
-	}
-
-	return float32(x) / float32(n), true
-}
+//func (h *Histogram) EstimatePercentile(value *resource.Quantity) (float32, bool) {
+//	qv := value.ScaledValue(h.Scale)
+//
+//	h.mutex.Lock()
+//	defer h.mutex.Unlock()
+//
+//	if len(h.values) < minObservationsForPercentile {
+//		return 0, false
+//	}
+//
+//	n := len(h.values)
+//	if n == 0 {
+//		return 0, false
+//	}
+//
+//	x := 0
+//	for i := 0; i < n; i++ {
+//		if h.values[i].value <= qv {
+//			x++
+//		}
+//	}
+//
+//	return float32(x) / float32(n), true
+//}
 
 type HistogramInfo struct {
 	Data []HistogramDataPoint `json:"data"`

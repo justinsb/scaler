@@ -173,24 +173,32 @@ func (e *HistogramSmoother) updateResourceList(parentPath string, currentResourc
 	for resource := range target {
 		path := parentPath + "." + string(resource)
 
+		rs := status.Get(resource)
+
 		currentQuantity, found := currentResources[resource]
 		if found {
-			percentile, ok := status.Get(resource).histogram.EstimatePercentile(&currentQuantity)
+			p70, ok := rs.histogram.Percentile(0.70)
 			if !ok {
-				glog.Infof("insufficient data to compute percentile value for %s", path)
+				glog.Infof("insufficient data to compute percentile value for %s @ 70%", path)
 				continue
 			}
-			if percentile >= 0.7 && percentile <= 0.9 {
+			p90, ok := rs.histogram.Percentile(0.90)
+			if !ok {
+				glog.Infof("insufficient data to compute percentile value for %s @ 90%", path)
+				continue
+			}
+
+			if currentQuantity.Cmp(p70) >= 0 && currentQuantity.Cmp(p90) <= 0 {
 				// Value in tolerable range
-				glog.V(4).Infof("value for %s (%s) is tolerable: %f", path, currentQuantity.String(), percentile)
+				glog.V(4).Infof("value for %s (%s) is tolerable: (%s-%s)", path, currentQuantity.String(), p70.String(), p90.String())
 				continue
 			}
 		}
 
-		estimated, ok := status.Get(resource).histogram.Percentile(0.8)
+		estimated, ok := rs.histogram.Percentile(0.8)
 		// TODO: quantization?
 		if !ok {
-			glog.Infof("insufficient data to compute target value for %s", path)
+			glog.Infof("insufficient data to compute target 80% value for %s", path)
 			continue
 		}
 
