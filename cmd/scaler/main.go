@@ -73,14 +73,17 @@ func run(config *options.AutoScalerConfig) error {
 		return err
 	}
 	// Use protobufs for communication with apiserver.
+	// But don't use them for our CRD - it doesn't work.
+
+	scalingClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("error building scaling client: %v", err)
+	}
+
 	cfg.ContentType = "application/vnd.kubernetes.protobuf"
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return err
-	}
-	scalingClient, err := clientset.NewForConfig(cfg)
-	if err != nil {
-		return fmt.Errorf("error building scaling client: %v", err)
 	}
 
 	// TODO: Are these resync times way too low?
