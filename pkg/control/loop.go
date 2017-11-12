@@ -94,6 +94,8 @@ func (c *State) upsert(o *scalingpolicy.ScalingPolicy) {
 	if policyState == nil {
 		policyState = NewPolicyState(c, o)
 		c.policies[key] = policyState
+	} else {
+		policyState.updatePolicy(o)
 	}
 }
 

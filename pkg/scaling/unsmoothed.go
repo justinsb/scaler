@@ -12,6 +12,8 @@ type Unsmoothed struct {
 	target *v1.PodSpec
 }
 
+var _ Smoother = &Unsmoothed{}
+
 func NewUnsmoothed() *Unsmoothed {
 	return &Unsmoothed{}
 }
@@ -106,16 +108,12 @@ func (e *Unsmoothed) updateResourceList(parentPath string, currentResources v1.R
 	return changed, changes
 }
 
-type Info struct {
-	Target *v1.PodSpec `json:"target"`
-}
-
 func (e *Unsmoothed) Query() *Info {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
 	info := &Info{
-		Target: e.target,
+		LatestTarget: e.target,
 	}
 	return info
 }

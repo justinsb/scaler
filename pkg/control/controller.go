@@ -25,6 +25,7 @@ import (
 	clientset "github.com/justinsb/scaler/pkg/client/clientset/versioned"
 	informers "github.com/justinsb/scaler/pkg/client/informers/externalversions"
 	scalingpolicylister "github.com/justinsb/scaler/pkg/client/listers/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/debug"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -232,7 +233,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		glog.Infof("Successfully synced '%s'", key)
+		glog.Infof("Successfully synced ScalingPolicy '%s'", key)
 		return nil
 	}(obj)
 
@@ -261,14 +262,17 @@ func (c *Controller) syncHandler(key string) error {
 		// The ScalingPolicy resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
+			glog.Warningf("scaling policy in work queue no longer exists %s/%s", namespace, name)
 			c.state.remove(namespace, name)
 			//runtime.HandleError(fmt.Errorf("scalingPolicy '%s' in work queue no longer exists", key))
 			return nil
 		}
 
+		glog.Warningf("error reading scaling policy %s/%s: %q", namespace, name, err)
 		return err
 	}
 
+	glog.V(8).Infof("syncing scaling policy: %v", debug.Print(scalingPolicy))
 	c.state.upsert(scalingPolicy)
 	return nil
 

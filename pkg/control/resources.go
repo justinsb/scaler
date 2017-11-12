@@ -3,6 +3,7 @@ package control
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/golang/glog"
 	"github.com/justinsb/scaler/cmd/scaler/options"
@@ -19,9 +20,10 @@ type PolicyState struct {
 	kubeClient kubernetes.Interface
 	options    *options.AutoScalerConfig
 
+	mutex     sync.Mutex
 	policies  *State
 	policy    *scalingpolicy.ScalingPolicy
-	smoothing *scaling.Unsmoothed
+	smoothing scaling.Smoother
 }
 
 func NewPolicyState(policies *State, policy *scalingpolicy.ScalingPolicy) *PolicyState {
@@ -32,15 +34,22 @@ func NewPolicyState(policies *State, policy *scalingpolicy.ScalingPolicy) *Polic
 		policy:     policy,
 	}
 
-	s.smoothing = scaling.NewUnsmoothed()
+	//s.smoothing = scaling.NewUnsmoothed()
+	s.smoothing = scaling.NewHistogramSmoothing()
 	return s
 }
 
 func (c *PolicyState) updatePolicy(o *scalingpolicy.ScalingPolicy) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	c.policy = o
 }
 
 func (c *PolicyState) computeTargetValues(snapshot factors.Snapshot) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	glog.V(4).Infof("computing target values")
 
 	podSpec, err := scaling.ComputeResources(snapshot, &c.policy.Spec)
@@ -48,13 +57,16 @@ func (c *PolicyState) computeTargetValues(snapshot factors.Snapshot) error {
 		return err
 	}
 
-	glog.V(4).Infof("updated target values: %s", debug.Print(podSpec))
+	glog.V(4).Infof("computed target values: %s", debug.Print(podSpec))
 
 	c.smoothing.UpdateTarget(podSpec)
 	return nil
 }
 
 func (c *PolicyState) updateValues() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	policy := c.policy
 	client := c.kubeClient
 	patcher := c.policies.patcher
@@ -114,6 +126,8 @@ func (c *PolicyState) updateValues() error {
 		} else {
 			glog.V(4).Infof("applied update to %s", path)
 		}
+	} else {
+		glog.V(4).Infof("no change needed for %s", path)
 	}
 
 	return nil
@@ -125,8 +139,8 @@ type PolicyInfo struct {
 }
 
 func (c *PolicyState) Query() *PolicyInfo {
-	//c.mutex.Lock()
-	//defer c.mutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	info := &PolicyInfo{
 		Policy: c.policy,
