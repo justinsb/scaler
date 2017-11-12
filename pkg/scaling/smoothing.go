@@ -180,9 +180,9 @@ func (e *HistogramSmoother) updateResourceList(parentPath string, currentResourc
 				glog.Infof("insufficient data to compute percentile value for %s", path)
 				continue
 			}
-			if percentile < 0.7 || percentile > 0.9 {
+			if percentile >= 0.7 && percentile <= 0.9 {
 				// Value in tolerable range
-				glog.V(8).Infof("value for %s (%s) is tolerable: %f", path, currentQuantity.String(), percentile)
+				glog.V(4).Infof("value for %s (%s) is tolerable: %f", path, currentQuantity.String(), percentile)
 				continue
 			}
 		}
@@ -198,6 +198,7 @@ func (e *HistogramSmoother) updateResourceList(parentPath string, currentResourc
 		if changes == nil {
 			changes = make(v1.ResourceList)
 		}
+		glog.V(4).Infof("current value for %s (%s) is out of range; will use %s", path, currentQuantity.String(), estimated.String())
 		changes[resource] = estimated
 	}
 

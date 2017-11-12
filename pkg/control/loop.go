@@ -89,6 +89,8 @@ func (c *State) upsert(o *scalingpolicy.ScalingPolicy) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	// TODO: Should we invalidate the histogram for a fast response to policy changes
+
 	key := types.NamespacedName{Namespace: o.Namespace, Name: o.Name}
 	policyState := c.policies[key]
 	if policyState == nil {
