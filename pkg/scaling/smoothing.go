@@ -41,6 +41,11 @@ func (r *resourceStatusMap) Get(key v1.ResourceName) *resourceStatus {
 	return v
 }
 
+// Smoother allows a hysterisis strategy to be plugged in
+// The problem we are solving:
+//  the inputs may change rapidly or oscillate - for example during a rolling update we might expect to see N / N+1 nodes oscillating.
+// Quantization makes it less likely that this will result in target value oscillation, but if we are unlucky with N
+// we will still oscillate.  (Quantization is more so we have human-readable values).
 type Smoother interface {
 	UpdateTarget(podSpec *v1.PodSpec)
 	ComputeChange(parentPath string, current *v1.PodSpec) (bool, *v1.PodSpec)
@@ -48,6 +53,9 @@ type Smoother interface {
 	Query() *Info
 }
 
+// HistogramSmoother prevents rapid changing of the configured values, even as the modelled optimum value changes rapidly.
+// It tracks a sliding-window of recent target values, and will only change the smoothed value when the current
+// value is not in the 70-90% range.  When the current value is out of range, we will set it to the 80% optimum value.
 type HistogramSmoother struct {
 	baseTime time.Time
 
