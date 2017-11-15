@@ -4,13 +4,14 @@ go_library(
     name = "go_default_library",
     srcs = [
         "api.go",
+        "info.go",
         "targets.go",
     ],
     importpath = "github.com/justinsb/scaler/pkg/http",
     visibility = ["//visibility:public"],
     deps = [
         "//cmd/scaler/options:go_default_library",
-        "//pkg/control:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
+        "//vendor/k8s.io/api/core/v1:go_default_library",
     ],
 )

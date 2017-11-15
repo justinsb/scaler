@@ -5,11 +5,10 @@ import (
 	"net/http"
 
 	"github.com/golang/glog"
-	"github.com/justinsb/scaler/pkg/control"
 )
 
 type Targets struct {
-	state *control.State
+	state HasState
 }
 
 func (h *Targets) ServeHTTP(w http.ResponseWriter, r *http.Request) {

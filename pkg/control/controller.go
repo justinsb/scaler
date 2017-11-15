@@ -81,7 +81,7 @@ type Controller struct {
 	state *State
 }
 
-// NewController returns a new sample controller
+// NewController returns a new controller for scaling policies
 func NewController(
 	state *State,
 	kubeClient kubernetes.Interface,

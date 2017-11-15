@@ -1,31 +1,32 @@
-package scaling
+package smoothing
 
 import (
 	"sync"
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
+	"github.com/justinsb/scaler/pkg/http"
 )
 
-type Unsmoothed struct {
+type NoopSmoothing struct {
 	mutex  sync.Mutex
 	target *v1.PodSpec
 }
 
-var _ Smoother = &Unsmoothed{}
+var _ Smoothing = &NoopSmoothing{}
 
-func NewUnsmoothed() *Unsmoothed {
-	return &Unsmoothed{}
+func NewNoop() *NoopSmoothing {
+	return &NoopSmoothing{}
 }
 
-func (e *Unsmoothed) UpdateTarget(podSpec *v1.PodSpec) {
+func (e *NoopSmoothing) UpdateTarget(podSpec *v1.PodSpec) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
 	e.target = podSpec
 }
 
-func (e *Unsmoothed) ComputeChange(parentPath string, current *v1.PodSpec) (bool, *v1.PodSpec) {
+func (e *NoopSmoothing) ComputeChange(parentPath string, current *v1.PodSpec) (bool, *v1.PodSpec) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -67,7 +68,7 @@ func (e *Unsmoothed) ComputeChange(parentPath string, current *v1.PodSpec) (bool
 
 }
 
-func (e *Unsmoothed) updateContainer(path string, currentContainer *v1.Container, target *v1.Container) (bool, *v1.Container) {
+func (e *NoopSmoothing) updateContainer(path string, currentContainer *v1.Container, target *v1.Container) (bool, *v1.Container) {
 	containerChanged := false
 	containerChanges := new(v1.Container)
 	containerChanges.Name = target.Name
@@ -85,7 +86,7 @@ func (e *Unsmoothed) updateContainer(path string, currentContainer *v1.Container
 	return containerChanged, containerChanges
 }
 
-func (e *Unsmoothed) updateResourceList(parentPath string, currentResources v1.ResourceList, target v1.ResourceList) (bool, v1.ResourceList) {
+func (e *NoopSmoothing) updateResourceList(parentPath string, currentResources v1.ResourceList, target v1.ResourceList) (bool, v1.ResourceList) {
 	changed := false
 	var changes v1.ResourceList
 
@@ -108,11 +109,11 @@ func (e *Unsmoothed) updateResourceList(parentPath string, currentResources v1.R
 	return changed, changes
 }
 
-func (e *Unsmoothed) Query() *Info {
+func (e *NoopSmoothing) Query() *http.Info {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	info := &Info{
+	info := &http.Info{
 		LatestTarget: e.target,
 	}
 	return info
