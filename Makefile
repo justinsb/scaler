@@ -1,3 +1,7 @@
+.PHONY: scale
+scaler:
+	bazel build //cmd/scaler
+
 .PHONY: gazelle
 gazelle:
 	bazel run //:gazelle -- -proto disable
