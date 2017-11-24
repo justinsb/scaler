@@ -4,10 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "compute.go",
-        "histogram.go",
         "quantization.go",
-        "smoothing.go",
-        "unsmoothed.go",
     ],
     importpath = "github.com/justinsb/scaler/pkg/scaling",
     visibility = ["//visibility:public"],

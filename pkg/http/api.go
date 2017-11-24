@@ -5,14 +5,17 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/justinsb/scaler/cmd/scaler/options"
-	"github.com/justinsb/scaler/pkg/control"
 )
 
 type APIServer struct {
 	server *http.Server
 }
 
-func NewAPIServer(options *options.AutoScalerConfig, state *control.State) (*APIServer, error) {
+type HasState interface {
+	Query() interface{}
+}
+
+func NewAPIServer(options *options.AutoScalerConfig, state HasState) (*APIServer, error) {
 	mux := http.NewServeMux()
 
 	//if *profiling {

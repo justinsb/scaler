@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// State holds the current policies and state around applying them
 type State struct {
 	client  kubernetes.Interface
 	patcher k8sclient.ResourcePatcher
@@ -45,7 +46,8 @@ func NewState(client kubernetes.Interface, options *options.AutoScalerConfig) (*
 	return p, nil
 }
 
-func (c *State) Query() map[string]*PolicyInfo {
+// Query returns the current state, for reporting e.g. via the /statz endpoint
+func (c *State) Query() interface{} {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 

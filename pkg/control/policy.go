@@ -14,8 +14,11 @@ import (
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"github.com/justinsb/scaler/pkg/scaling/smoothing"
+	"github.com/justinsb/scaler/pkg/http"
 )
 
+// PolicyState is the state around a single scaling policy
 type PolicyState struct {
 	kubeClient kubernetes.Interface
 	options    *options.AutoScalerConfig
@@ -23,7 +26,7 @@ type PolicyState struct {
 	mutex     sync.Mutex
 	policies  *State
 	policy    *scalingpolicy.ScalingPolicy
-	smoothing scaling.Smoother
+	smoothing smoothing.Smoothing
 }
 
 func NewPolicyState(policies *State, policy *scalingpolicy.ScalingPolicy) *PolicyState {
@@ -34,42 +37,43 @@ func NewPolicyState(policies *State, policy *scalingpolicy.ScalingPolicy) *Polic
 		policy:     policy,
 	}
 
-	//s.smoothing = scaling.NewUnsmoothed()
-	s.smoothing = scaling.NewHistogramSmoothing()
+	s.smoothing = smoothing.New(&policy.Spec.Smoothing)
+
 	return s
 }
 
-func (c *PolicyState) updatePolicy(o *scalingpolicy.ScalingPolicy) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+func (s *PolicyState) updatePolicy(o *scalingpolicy.ScalingPolicy) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	c.policy = o
+	s.policy = o
+	s.smoothing = smoothing.UpdateRule(s.smoothing, &s.policy.Spec.Smoothing)
 }
 
-func (c *PolicyState) computeTargetValues(snapshot factors.Snapshot) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+func (s *PolicyState) computeTargetValues(snapshot factors.Snapshot) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	glog.V(4).Infof("computing target values")
 
-	podSpec, err := scaling.ComputeResources(snapshot, &c.policy.Spec)
+	podSpec, err := scaling.ComputeResources(snapshot, &s.policy.Spec)
 	if err != nil {
 		return err
 	}
 
 	glog.V(4).Infof("computed target values: %s", debug.Print(podSpec))
 
-	c.smoothing.UpdateTarget(podSpec)
+	s.smoothing.UpdateTarget(podSpec)
 	return nil
 }
 
-func (c *PolicyState) updateValues() error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+func (s *PolicyState) updateValues() error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	policy := c.policy
-	client := c.kubeClient
-	patcher := c.policies.patcher
+	policy := s.policy
+	client := s.kubeClient
+	patcher := s.policies.patcher
 
 	kind := policy.Spec.ScaleTargetRef.Kind
 	namespace := policy.Namespace
@@ -89,7 +93,7 @@ func (c *PolicyState) updateValues() error {
 				return err
 			}
 
-			changed, updates = c.smoothing.ComputeChange(path, &o.Spec.Template.Spec)
+			changed, updates = s.smoothing.ComputeChange(path, &o.Spec.Template.Spec)
 		}
 
 	case "daemonset":
@@ -101,7 +105,7 @@ func (c *PolicyState) updateValues() error {
 				return err
 			}
 
-			changed, updates = c.smoothing.ComputeChange(path, &o.Spec.Template.Spec)
+			changed, updates = s.smoothing.ComputeChange(path, &o.Spec.Template.Spec)
 		}
 
 	case "deployment":
@@ -113,7 +117,7 @@ func (c *PolicyState) updateValues() error {
 				return err
 			}
 
-			changed, updates = c.smoothing.ComputeChange(path, &o.Spec.Template.Spec)
+			changed, updates = s.smoothing.ComputeChange(path, &o.Spec.Template.Spec)
 		}
 
 	default:
@@ -121,7 +125,7 @@ func (c *PolicyState) updateValues() error {
 	}
 
 	if changed {
-		if err := patcher.UpdateResources(kind, namespace, name, updates, c.options.DryRun); err != nil {
+		if err := patcher.UpdateResources(kind, namespace, name, updates, s.options.DryRun); err != nil {
 			glog.Warningf("failed to update %q: %v", kind, err)
 		} else {
 			glog.V(4).Infof("applied update to %s", path)
@@ -135,16 +139,16 @@ func (c *PolicyState) updateValues() error {
 
 type PolicyInfo struct {
 	Policy *scalingpolicy.ScalingPolicy `json:"policy"`
-	State  *scaling.Info                `json:"state"`
+	State  *http.Info                `json:"state"`
 }
 
-func (c *PolicyState) Query() *PolicyInfo {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+func (s *PolicyState) Query() *PolicyInfo {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	info := &PolicyInfo{
-		Policy: c.policy,
-		State:  c.smoothing.Query(),
+		Policy: s.policy,
+		State:  s.smoothing.Query(),
 	}
 	return info
 }

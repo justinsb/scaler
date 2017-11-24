@@ -1,4 +1,4 @@
-package scaling
+package smoothing
 
 import (
 	"sort"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	"github.com/justinsb/scaler/pkg/http"
 )
 
 type dataPoint struct {
@@ -69,7 +70,7 @@ func (h *Histogram) Percentile(ratio float32) (resource.Quantity, bool) {
 	return *r, true
 }
 
-//func (h *Histogram) EstimatePercentile(value *resource.Quantity) (float32, bool) {
+//func (h *Percentile) EstimatePercentile(value *resource.Quantity) (float32, bool) {
 //	qv := value.ScaledValue(h.Scale)
 //
 //	h.mutex.Lock()
@@ -94,29 +95,20 @@ func (h *Histogram) Percentile(ratio float32) (resource.Quantity, bool) {
 //	return float32(x) / float32(n), true
 //}
 
-type HistogramInfo struct {
-	Data []HistogramDataPoint `json:"data"`
-}
-
-type HistogramDataPoint struct {
-	Time  int64 `json:"time"`
-	Value int64 `json:"value"`
-}
-
-func (h *Histogram) Query(baseTime time.Time) *HistogramInfo {
+func (h *Histogram) Query(baseTime time.Time) *http.HistogramInfo {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	info := &HistogramInfo{}
+	info := &http.HistogramInfo{}
 
 	for i := h.pos; i < len(h.values); i++ {
-		info.Data = append(info.Data, HistogramDataPoint{
+		info.Data = append(info.Data, http.HistogramDataPoint{
 			Time:  baseTime.Add(time.Duration(h.values[i].time)).Unix(),
 			Value: h.values[i].value,
 		})
 	}
 	for i := 0; i < h.pos; i++ {
-		info.Data = append(info.Data, HistogramDataPoint{
+		info.Data = append(info.Data, http.HistogramDataPoint{
 			Time:  baseTime.Add(time.Duration(h.values[i].time)).Unix(),
 			Value: h.values[i].value,
 		})

@@ -45,6 +45,9 @@ type ScalingPolicySpec struct {
 	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef" protobuf:"bytes,1,opt,name=scaleTargetRef"`
 
 	Containers []ContainerScalingRule `json:"containers" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,2,rep,name=containers"`
+
+	// TODO: Should this be at the ContainerScalingRule level?
+	Smoothing SmoothingRule `json:"smoothing,omitempty" protobuf:"bytes,2,rep,name=quantization,casttype=ResourceList,castkey=ResourceName"`
 }
 
 type QuantizationRule struct {
@@ -54,6 +57,18 @@ type QuantizationRule struct {
 	Step      resource.Quantity `json:"step,omitempty"`
 	StepRatio float32           `json:"stepRatio,omitempty"`
 	MaxStep   resource.Quantity `json:"maxStep,omitempty"`
+}
+
+type PercentileSmoothing struct {
+	// TODO: How should we represent percentages?
+
+	Target float32 `json"target,omitempty"`
+	LowThreshold float32 `json"lowThreshold,omitempty"`
+	HighThreshold float32 `json"highThreshold,omitempty"`
+}
+
+type SmoothingRule struct {
+	Percentile *PercentileSmoothing `json:"percentile,omitempty"`
 }
 
 // ScalingRule defines how container resources are scaled
@@ -99,17 +114,7 @@ type ResourceScalingRule struct {
 
 // ScalingPolicyStatus is the status for an ScalingPolicy resource
 type ScalingPolicyStatus struct {
-	State             ScalingPolicyState `json:"state,omitempty"`
-	Message           string             `json:"message,omitempty"`
-	AvailableReplicas int32              `json:"availableReplicas"`
 }
-
-type ScalingPolicyState string
-
-const (
-	ScalingPolicyStateCreated   ScalingPolicyState = "Created"
-	ScalingPolicyStateProcessed ScalingPolicyState = "Processed"
-)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
