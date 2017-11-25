@@ -3,7 +3,9 @@ package http
 import "k8s.io/api/core/v1"
 
 type Info struct {
-	LatestTarget *v1.PodSpec `json:"latestTarget"`
+	LatestTarget       *v1.PodSpec `json:"latestTarget"`
+	ScaleDownThreshold *v1.PodSpec `json:"scaleDownThreshold"`
+
 	LatestActual *v1.PodSpec `json:"latestActual"`
 
 	Histograms map[string]*HistogramInfo `json:"histograms"`

@@ -26,8 +26,6 @@ func (u *UI) ServeGraphPage(w http.ResponseWriter, r *http.Request) {
 		internalError(w, r, err)
 		return
 	}
-	glog.Infof("graphs %q", graphs)
-	glog.Infof("tokens %q", tokens)
 	if len(tokens) == 3 {
 		key := tokens[2]
 		var graph *graph.Metadata

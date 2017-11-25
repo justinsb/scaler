@@ -1,6 +1,8 @@
 package smoothing
 
 import (
+	"github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/factors"
 	"github.com/justinsb/scaler/pkg/http"
 	"k8s.io/api/core/v1"
 )
@@ -11,7 +13,7 @@ import (
 // Quantization makes it less likely that this will result in target value oscillation, but if we are unlucky with N
 // we will still oscillate.  (Quantization is more so we have human-readable values).
 type Smoothing interface {
-	UpdateTarget(podSpec *v1.PodSpec)
+	UpdateTarget(snapshot factors.Snapshot, rules *v1alpha1.ScalingPolicySpec) error
 
 	ComputeChange(parentPath string, current *v1.PodSpec) (bool, *v1.PodSpec)
 

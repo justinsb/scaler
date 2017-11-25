@@ -8,7 +8,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/justinsb/scaler/cmd/scaler/options"
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
-	"github.com/justinsb/scaler/pkg/debug"
 	"github.com/justinsb/scaler/pkg/factors"
 	staticfactors "github.com/justinsb/scaler/pkg/factors/static"
 	"github.com/justinsb/scaler/pkg/graph"
@@ -27,16 +26,16 @@ type PolicyState struct {
 	options    *options.AutoScalerConfig
 
 	mutex     sync.Mutex
-	policies  *State
+	parent    *State
 	policy    *scalingpolicy.ScalingPolicy
 	smoothing smoothing.Smoothing
 }
 
-func NewPolicyState(policies *State, policy *scalingpolicy.ScalingPolicy) *PolicyState {
+func NewPolicyState(parent *State, policy *scalingpolicy.ScalingPolicy) *PolicyState {
 	s := &PolicyState{
-		kubeClient: policies.client,
-		options:    policies.options,
-		policies:   policies,
+		kubeClient: parent.client,
+		options:    parent.options,
+		parent:     parent,
 		policy:     policy,
 	}
 
@@ -59,15 +58,7 @@ func (s *PolicyState) computeTargetValues(snapshot factors.Snapshot) error {
 
 	glog.V(4).Infof("computing target values")
 
-	podSpec, err := scaling.ComputeResources(snapshot, &s.policy.Spec)
-	if err != nil {
-		return err
-	}
-
-	glog.V(4).Infof("computed target values: %s", debug.Print(podSpec))
-
-	s.smoothing.UpdateTarget(podSpec)
-	return nil
+	return s.smoothing.UpdateTarget(snapshot, &s.policy.Spec)
 }
 
 func (s *PolicyState) updateValues() error {
@@ -76,7 +67,7 @@ func (s *PolicyState) updateValues() error {
 
 	policy := s.policy
 	client := s.kubeClient
-	patcher := s.policies.patcher
+	patcher := s.parent.patcher
 
 	kind := policy.Spec.ScaleTargetRef.Kind
 	namespace := policy.Namespace
@@ -150,23 +141,39 @@ var _ graph.Graphable = &PolicyState{}
 func (s *PolicyState) ListGraphs() ([]*graph.Metadata, error) {
 	var metadata []*graph.Metadata
 
-	{
-		g := &graph.Metadata{}
-		g.Key = "cores"
-		g.Builder = s.buildGraph
-		metadata = append(metadata, g)
+	inputs := make(map[string]bool)
+	for _, c := range s.policy.Spec.Containers {
+		for _, r := range c.Resources.Limits {
+			if r.Input != "" {
+				inputs[r.Input] = true
+			}
+		}
+		for _, r := range c.Resources.Requests {
+			if r.Input != "" {
+				inputs[r.Input] = true
+			}
+		}
+	}
+
+	for input := range inputs {
+		{
+			g := &graph.Metadata{}
+			g.Key = input
+			g.Builder = func() (*graph.Model, error) { return s.buildGraph(input) }
+			metadata = append(metadata, g)
+		}
 	}
 
 	return metadata, nil
 }
 
-func (s *PolicyState) buildGraph() (*graph.Model, error) {
+func (s *PolicyState) buildGraph(factor string) (*graph.Model, error) {
 	graph := &graph.Model{}
-	for cores := 1; cores < 100; cores++ {
+	for x := 1; x < 100; x++ {
 		factors := make(map[string]float64)
-		factors["cores"] = float64(cores)
+		factors[factor] = float64(x)
 
-		graph.XAxis.Label = "cores"
+		graph.XAxis.Label = factor
 
 		static := staticfactors.NewStaticFactors(factors)
 		snapshot, err := static.Snapshot()
@@ -182,33 +189,46 @@ func (s *PolicyState) buildGraph() (*graph.Model, error) {
 			continue
 		}
 
-		for i := range podSpec.Containers {
-			container := &podSpec.Containers[i]
+		addDataPoints(graph, "", float64(x), podSpec)
 
-			for k, q := range container.Resources.Limits {
-				v, units := resourceToFloat(k, q)
-
-				label := string(k) + "_limits_" + container.Name
-				s := graph.GetSeries(label)
-				s.AddXYPoint(float64(cores), v)
-				s.Units = units
+		if s.policy.Spec.Smoothing.ScaleDownShift != nil {
+			scaleDownPodSpec, err := scaling.ComputeResourcesShifted(snapshot, &s.policy.Spec, s.policy.Spec.Smoothing.ScaleDownShift)
+			if err != nil {
+				glog.Warningf("error computing shifted resources: %v", err)
+				continue
 			}
 
-			for k, q := range container.Resources.Requests {
-				v, units := resourceToFloat(k, q)
-
-				label := string(k) + "_requests_" + container.Name
-				s := graph.GetSeries(label)
-				s.AddXYPoint(float64(cores), v)
-				s.Units = units
-			}
+			addDataPoints(graph, "scaledown_", float64(x), scaleDownPodSpec)
 		}
-
 	}
 
 	return graph, nil
 }
 
+func addDataPoints(graph *graph.Model, prefix string, x float64, podSpec *v1.PodSpec) {
+	for i := range podSpec.Containers {
+		container := &podSpec.Containers[i]
+
+		for k, q := range container.Resources.Limits {
+			v, units := resourceToFloat(k, q)
+
+			label := prefix + string(k) + "_limits_" + container.Name
+			s := graph.GetSeries(label)
+			s.AddXYPoint(x, v)
+			s.Units = units
+		}
+
+		for k, q := range container.Resources.Requests {
+			v, units := resourceToFloat(k, q)
+
+			label := prefix + string(k) + "_requests_" + container.Name
+			s := graph.GetSeries(label)
+			s.AddXYPoint(x, v)
+			s.Units = units
+		}
+	}
+
+}
 func resourceToFloat(k v1.ResourceName, q resource.Quantity) (float64, string) {
 	var v float64
 	var units string

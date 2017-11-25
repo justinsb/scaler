@@ -4,7 +4,11 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	"github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/debug"
+	"github.com/justinsb/scaler/pkg/factors"
 	"github.com/justinsb/scaler/pkg/http"
+	"github.com/justinsb/scaler/pkg/scaling"
 	"k8s.io/api/core/v1"
 )
 
@@ -19,11 +23,19 @@ func NewNoop() *NoopSmoothing {
 	return &NoopSmoothing{}
 }
 
-func (e *NoopSmoothing) UpdateTarget(podSpec *v1.PodSpec) {
+func (e *NoopSmoothing) UpdateTarget(snapshot factors.Snapshot, policy *v1alpha1.ScalingPolicySpec) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
+	podSpec, err := scaling.ComputeResources(snapshot, policy)
+	if err != nil {
+		return err
+	}
+
+	glog.V(4).Infof("computed target values: %s", debug.Print(podSpec))
+
 	e.target = podSpec
+	return nil
 }
 
 func (e *NoopSmoothing) ComputeChange(parentPath string, current *v1.PodSpec) (bool, *v1.PodSpec) {

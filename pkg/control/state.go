@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// State holds the current policies and state around applying them
+// State holds the current parent and state around applying them
 type State struct {
 	client  kubernetes.Interface
 	patcher k8sclient.ResourcePatcher

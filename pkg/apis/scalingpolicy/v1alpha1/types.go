@@ -67,8 +67,13 @@ type PercentileSmoothing struct {
 	HighThreshold float32 `json"highThreshold,omitempty"`
 }
 
+type ShiftSmoothing struct {
+	Inputs map[string]float64 `json:"inputs,omitempty"`
+}
+
 type SmoothingRule struct {
-	Percentile *PercentileSmoothing `json:"percentile,omitempty"`
+	Percentile     *PercentileSmoothing `json:"percentile,omitempty"`
+	ScaleDownShift *ShiftSmoothing      `json:"scaleDownShift,omitempty"`
 }
 
 // ScalingRule defines how container resources are scaled

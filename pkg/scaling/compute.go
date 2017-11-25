@@ -40,6 +40,15 @@ func ComputeResources(inputs factors.Snapshot, policy *scalingpolicy.ScalingPoli
 	return podSpec, nil
 }
 
+func ComputeResourcesShifted(snapshot factors.Snapshot, policy *scalingpolicy.ScalingPolicySpec, shift *scalingpolicy.ShiftSmoothing) (*v1.PodSpec, error) {
+	shifts := make(map[string]float64)
+	for k, v := range shift.Inputs {
+		shifts[k] = -v
+	}
+	shifted := factors.Shift(snapshot, shifts)
+	return ComputeResources(shifted, policy)
+}
+
 func applyQuantization(resourceList v1.ResourceList, quantizationRules []scalingpolicy.QuantizationRule) {
 	for i := range quantizationRules {
 		rule := &quantizationRules[i]

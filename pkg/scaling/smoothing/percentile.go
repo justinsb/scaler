@@ -6,7 +6,10 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/debug"
+	"github.com/justinsb/scaler/pkg/factors"
 	"github.com/justinsb/scaler/pkg/http"
+	"github.com/justinsb/scaler/pkg/scaling"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -69,11 +72,18 @@ func NewPercentileSmoothing(rule *v1alpha1.PercentileSmoothing) Smoothing {
 	return s
 }
 
-func (s *PercentileSmoothing) UpdateTarget(podSpec *v1.PodSpec) {
+func (s *PercentileSmoothing) UpdateTarget(snapshot factors.Snapshot, policy *v1alpha1.ScalingPolicySpec) error {
 	t := time.Now()
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	podSpec, err := scaling.ComputeResources(snapshot, policy)
+	if err != nil {
+		return err
+	}
+
+	glog.V(4).Infof("computed target values: %s", debug.Print(podSpec))
 
 	s.latestTarget = podSpec
 
@@ -98,6 +108,8 @@ func (s *PercentileSmoothing) UpdateTarget(podSpec *v1.PodSpec) {
 	}
 
 	// TODO: GC old values
+
+	return nil
 }
 
 func (s *PercentileSmoothing) updateRule(update *v1alpha1.PercentileSmoothing) {

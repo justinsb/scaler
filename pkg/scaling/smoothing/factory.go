@@ -5,11 +5,7 @@ import (
 )
 
 func New(p *api.SmoothingRule) Smoothing {
-	if p.Percentile != nil {
-		return NewPercentileSmoothing(p.Percentile)
-	} else {
-		return NewNoop()
-	}
+	return UpdateRule(nil, p)
 }
 
 func UpdateRule(s Smoothing, p *api.SmoothingRule) Smoothing {
@@ -20,6 +16,13 @@ func UpdateRule(s Smoothing, p *api.SmoothingRule) Smoothing {
 			return ps
 		}
 		return NewPercentileSmoothing(p.Percentile)
+	} else if p.ScaleDownShift != nil {
+		rs, ok := s.(*ResourceShiftSmoothing)
+		if ok {
+			rs.updateRule(p.ScaleDownShift)
+			return rs
+		}
+		return NewResourceShiftSmoothing(p.ScaleDownShift)
 	} else {
 		noop, ok := s.(*NoopSmoothing)
 		if ok {
