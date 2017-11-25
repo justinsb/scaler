@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/golang/glog"
-	"github.com/justinsb/scaler/webapp/templates"
 	"github.com/justinsb/scaler/pkg/graph"
+	"github.com/justinsb/scaler/webapp/templates"
 )
 
 type UI struct {

@@ -11,13 +11,14 @@ import (
 	"github.com/justinsb/scaler/pkg/debug"
 	"github.com/justinsb/scaler/pkg/factors"
 	staticfactors "github.com/justinsb/scaler/pkg/factors/static"
+	"github.com/justinsb/scaler/pkg/graph"
 	"github.com/justinsb/scaler/pkg/http"
 	"github.com/justinsb/scaler/pkg/scaling"
 	"github.com/justinsb/scaler/pkg/scaling/smoothing"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"github.com/justinsb/scaler/pkg/graph"
 )
 
 // PolicyState is the state around a single scaling policy
@@ -170,47 +171,20 @@ func (s *PolicyState) BuildGraph() (*graph.Model, error) {
 
 		for i := range podSpec.Containers {
 			container := &podSpec.Containers[i]
+
 			for k, q := range container.Resources.Limits {
-				var v float64
-				var units string
+				v, units := resourceToFloat(k, q)
 
-				switch k {
-				case v1.ResourceCPU:
-					v = float64(q.MilliValue()) / 1000.0
-					units = "CPU cores"
-				case v1.ResourceMemory:
-					v = float64(q.Value())
-					units = "bytes"
-
-				default:
-					glog.Warningf("unhandled resource type in statz %s", k)
-					v = float64(q.Value())
-					units = ""
-				}
-				label := container.Name + "_resources_limits_" + string(k)
+				label := string(k) + "_limits_" + container.Name
 				s := graph.GetSeries(label)
 				s.AddXYPoint(float64(cores), v)
 				s.Units = units
 			}
 
 			for k, q := range container.Resources.Requests {
-				var v float64
-				var units string
+				v, units := resourceToFloat(k, q)
 
-				switch k {
-				case v1.ResourceCPU:
-					v = float64(q.MilliValue()) / 1000.0
-					units = "CPU cores"
-				case v1.ResourceMemory:
-					v = float64(q.Value())
-					units = "bytes"
-
-				default:
-					glog.Warningf("unhandled resource type in statz %s", k)
-					v = float64(q.Value())
-					units = ""
-				}
-				label := container.Name + "_resources_requests_" + string(k)
+				label := string(k) + "_requests_" + container.Name
 				s := graph.GetSeries(label)
 				s.AddXYPoint(float64(cores), v)
 				s.Units = units
@@ -220,6 +194,26 @@ func (s *PolicyState) BuildGraph() (*graph.Model, error) {
 	}
 
 	return graph, nil
+}
+
+func resourceToFloat(k v1.ResourceName, q resource.Quantity) (float64, string) {
+	var v float64
+	var units string
+	switch k {
+	case v1.ResourceCPU:
+		v = float64(q.MilliValue()) / 1000.0
+		units = "CPU cores"
+	case v1.ResourceMemory:
+		v = float64(q.Value())
+		units = "bytes"
+
+	default:
+		glog.Warningf("unhandled resource type in statz %s", k)
+		v = float64(q.Value())
+		units = ""
+	}
+
+	return v, units
 }
 
 func (s *PolicyState) Query() *PolicyInfo {

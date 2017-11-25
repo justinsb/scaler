@@ -1,6 +1,7 @@
 package control
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/golang/glog"
@@ -9,11 +10,10 @@ import (
 	"github.com/justinsb/scaler/pkg/control/k8sclient"
 	"github.com/justinsb/scaler/pkg/factors"
 	k8sfactors "github.com/justinsb/scaler/pkg/factors/kubernetes"
+	"github.com/justinsb/scaler/pkg/graph"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"github.com/justinsb/scaler/pkg/graph"
-	"fmt"
 )
 
 // State holds the current policies and state around applying them
@@ -59,7 +59,6 @@ func (c *State) Query() interface{} {
 	}
 	return result
 }
-
 
 var _ graph.Graphable = &State{}
 

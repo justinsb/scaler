@@ -1,8 +1,8 @@
 package graph
 
 type Model struct {
-	XAxis Axis `json:"xAxis"`
-	YAxis Axis `json:"yAxis"`
+	XAxis  Axis      `json:"xAxis"`
+	YAxis  Axis      `json:"yAxis"`
 	Series []*Series `json:"series"`
 }
 
@@ -30,7 +30,7 @@ type Series struct {
 }
 
 type Axis struct {
-	Label string  `json:"label"`
+	Label string `json:"label"`
 }
 
 func (s *Series) AddXYPoint(x float64, y float64) {
