@@ -1,8 +1,8 @@
 package smoothing
 
 import (
-	"k8s.io/api/core/v1"
 	"github.com/justinsb/scaler/pkg/http"
+	"k8s.io/api/core/v1"
 )
 
 // Smoothing allows a hysteresis strategy to be plugged in

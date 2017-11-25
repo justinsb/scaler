@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
+	"github.com/justinsb/scaler/pkg/http"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"github.com/justinsb/scaler/pkg/http"
-	"github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
 )
 
 const minObservationsForPercentile = 3
@@ -99,7 +99,6 @@ func (s *PercentileSmoothing) UpdateTarget(podSpec *v1.PodSpec) {
 
 	// TODO: GC old values
 }
-
 
 func (s *PercentileSmoothing) updateRule(update *v1alpha1.PercentileSmoothing) {
 	s.mutex.Lock()

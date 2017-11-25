@@ -12,7 +12,6 @@ func New(p *api.SmoothingRule) Smoothing {
 	}
 }
 
-
 func UpdateRule(s Smoothing, p *api.SmoothingRule) Smoothing {
 	if p.Percentile != nil {
 		ps, ok := s.(*PercentileSmoothing)

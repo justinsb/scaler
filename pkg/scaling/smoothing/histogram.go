@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	"github.com/justinsb/scaler/pkg/http"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type dataPoint struct {

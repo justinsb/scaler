@@ -19,6 +19,8 @@ go_library(
         "//pkg/debug:go_default_library",
         "//pkg/factors:go_default_library",
         "//pkg/factors/kubernetes:go_default_library",
+        "//pkg/factors/static:go_default_library",
+        "//pkg/graph:go_default_library",
         "//pkg/http:go_default_library",
         "//pkg/scaling:go_default_library",
         "//pkg/scaling/smoothing:go_default_library",

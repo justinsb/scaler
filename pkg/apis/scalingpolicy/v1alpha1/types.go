@@ -62,8 +62,8 @@ type QuantizationRule struct {
 type PercentileSmoothing struct {
 	// TODO: How should we represent percentages?
 
-	Target float32 `json"target,omitempty"`
-	LowThreshold float32 `json"lowThreshold,omitempty"`
+	Target        float32 `json"target,omitempty"`
+	LowThreshold  float32 `json"lowThreshold,omitempty"`
 	HighThreshold float32 `json"highThreshold,omitempty"`
 }
 

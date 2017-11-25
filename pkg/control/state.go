@@ -12,6 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"github.com/justinsb/scaler/pkg/graph"
+	"fmt"
 )
 
 // State holds the current policies and state around applying them
@@ -56,6 +58,20 @@ func (c *State) Query() interface{} {
 		result[k.String()] = v.Query()
 	}
 	return result
+}
+
+
+var _ graph.Graphable = &State{}
+
+func (c *State) BuildGraph() (*graph.Model, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	for _, v := range c.policies {
+		graph, err := v.BuildGraph()
+		return graph, err
+	}
+	return nil, fmt.Errorf("no policies")
 }
 
 func (c *State) Run(stopCh <-chan struct{}) {

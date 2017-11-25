@@ -4,8 +4,8 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"k8s.io/api/core/v1"
 	"github.com/justinsb/scaler/pkg/http"
+	"k8s.io/api/core/v1"
 )
 
 type NoopSmoothing struct {
