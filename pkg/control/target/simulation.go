@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"github.com/justinsb/scaler/pkg/debug"
 	"k8s.io/api/core/v1"
 )
 
@@ -12,6 +11,8 @@ type SimulationTarget struct {
 	Current *v1.PodSpec
 
 	ClusterState *ClusterStats
+
+	UpdateCount int
 }
 
 var _ Interface = &SimulationTarget{}
@@ -24,7 +25,6 @@ func (s *SimulationTarget) Read(kind, namespace, name string) (*v1.PodSpec, erro
 	if s.Current == nil {
 		return nil, fmt.Errorf("simulated value not set")
 	}
-	glog.Infof("Read %s", debug.Print(s.Current))
 	return s.Current.DeepCopy(), nil
 }
 
@@ -50,7 +50,7 @@ func (s *SimulationTarget) UpdateResources(kind, namespace, name string, updates
 			currentContainer.Resources.Requests[k] = r
 		}
 	}
-	glog.Infof("Read %s", debug.Print(s.Current))
+	s.UpdateCount++
 	return nil
 }
 

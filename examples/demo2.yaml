@@ -14,15 +14,12 @@ spec:
       - resource: cpu
         base: 200m
         input: cores
-        step: 10m
-      requests:
-      - resource: cpu
-        base: 100m
+        step: 250m
     quantization:
     - resource: cpu
-      step: 16m
+      step: 500m
   smoothing:
     percentile:
       target: 0.80
       lowThreshold: 0.60
-      highThreshold: 0.85
+      highThreshold: 0.95

@@ -42,7 +42,7 @@ func RunSimulation(policy *scalingpolicy.ScalingPolicy, options *options.AutoSca
 
 	run := &simulate.Run{}
 
-	for t := 0; t < 1000; t++ {
+	for t := 0; t < 3600; t++ {
 		nodeCount += int(rand.NormFloat64())
 		updateClusterState(universe, nodeCount)
 
@@ -79,6 +79,8 @@ func RunSimulation(policy *scalingpolicy.ScalingPolicy, options *options.AutoSca
 
 		run.Add(t, universe.ClusterState, universe.Current, latestTarget, scaleDownThreshold, scaleUpThreshold)
 	}
+
+	run.UpdateCount = universe.UpdateCount
 
 	if len(errors) != 0 {
 		glog.Warningf("%d errors in simulation.  first error=%v", len(errors), errors[0])

@@ -14,13 +14,10 @@ spec:
       - resource: cpu
         base: 200m
         input: cores
-        step: 10m
-      requests:
-      - resource: cpu
-        base: 100m
+        step: 250m
     quantization:
     - resource: cpu
-      step: 16m
+      step: 500m
   smoothing:
     scaleDownShift:
       inputs:

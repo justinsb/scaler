@@ -18,7 +18,8 @@ type Simulatable interface {
 type BuilderFunction func() (*Run, error)
 
 type Run struct {
-	Graph *graph.Model
+	Graph       *graph.Model `json:"graph"`
+	UpdateCount int          `json:"updateCount"`
 }
 
 func (r *Run) Add(t int, clusterState *target.ClusterStats, actual *v1.PodSpec, target *v1.PodSpec, scaleDownThreshold *v1.PodSpec, scaleUpThreshold *v1.PodSpec) {
@@ -29,14 +30,16 @@ func (r *Run) Add(t int, clusterState *target.ClusterStats, actual *v1.PodSpec, 
 	x := float64(t)
 
 	if clusterState != nil {
-		{
-			v := clusterState.NodeSumAllocatable[v1.ResourceCPU]
-			r.Graph.GetSeries("cluster-cores", &graph.Series{}).AddXYPoint(x, float64(v.MilliValue())/1000.0)
-		}
-		{
-			v := clusterState.NodeSumAllocatable[v1.ResourceMemory]
-			r.Graph.GetSeries("cluster-mb", &graph.Series{}).AddXYPoint(x, float64(v.Value())/(1024.0*1024.0*1024.0))
-		}
+		// We don't include this data - in our current simulation, it's a straight multiple of the nodes (so doesn't add value),
+		// and it just messes up our scale
+		//{
+		//	v := clusterState.NodeSumAllocatable[v1.ResourceCPU]
+		//	r.Graph.GetSeries("cluster-cores", &graph.Series{}).AddXYPoint(x, float64(v.MilliValue())/1000.0)
+		//}
+		//{
+		//	v := clusterState.NodeSumAllocatable[v1.ResourceMemory]
+		//	r.Graph.GetSeries("cluster-mb", &graph.Series{}).AddXYPoint(x, float64(v.Value())/(1024.0*1024.0*1024.0))
+		//}
 		r.Graph.GetSeries("cluster-node-count", &graph.Series{}).AddXYPoint(x, float64(clusterState.NodeCount))
 	}
 

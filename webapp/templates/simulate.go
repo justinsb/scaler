@@ -28,7 +28,7 @@ var simulateTemplate = `
         html, body, #chart1, svg {
             margin: 0px;
             padding: 0px;
-            height: 100%;
+            height: 90%;
             width: 100%;
         }
 
@@ -38,6 +38,7 @@ var simulateTemplate = `
     </style>
 </head>
 <body class='with-3d-shadow with-transitions'>
+<div id="info" >UpdateCount: {{.Run.UpdateCount}}</div>
 <div id="chart1"></div>
 
 <script>
@@ -47,7 +48,7 @@ var simulateTemplate = `
   nv.addGraph(function() {
     chart = nv.models.lineChart()
       .options({
-        duration: 300,
+        duration: 0,
         useInteractiveGuideline: true
       })
     ;
@@ -89,6 +90,7 @@ var simulateTemplate = `
 type simulateData struct {
 	SeriesJson template.JS
 	Graph      *graph.Model
+	Run *simulate.Run
 }
 
 func BuildSimulatePage(run *simulate.Run) ([]byte, error) {
@@ -102,9 +104,10 @@ func BuildSimulatePage(run *simulate.Run) ([]byte, error) {
 		return nil, fmt.Errorf("error parsing simulate template: %v", err)
 	}
 
-	data := &graphData{
+	data := &simulateData{
 		SeriesJson: template.JS(seriesJson),
 		Graph:      run.Graph,
+		Run: run,
 	}
 
 	var b bytes.Buffer
