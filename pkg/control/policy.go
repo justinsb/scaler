@@ -147,7 +147,20 @@ type PolicyInfo struct {
 
 var _ graph.Graphable = &PolicyState{}
 
-func (s *PolicyState) BuildGraph() (*graph.Model, error) {
+func (s *PolicyState) ListGraphs() ([]*graph.Metadata, error) {
+	var metadata []*graph.Metadata
+
+	{
+		g := &graph.Metadata{}
+		g.Key = "cores"
+		g.Builder = s.buildGraph
+		metadata = append(metadata, g)
+	}
+
+	return metadata, nil
+}
+
+func (s *PolicyState) buildGraph() (*graph.Model, error) {
 	graph := &graph.Model{}
 	for cores := 1; cores < 100; cores++ {
 		factors := make(map[string]float64)

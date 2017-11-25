@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["graph.html.go"],
+    srcs = [
+        "graph.html.go",
+        "graphlist.html.go",
+    ],
     importpath = "github.com/justinsb/scaler/webapp/templates",
     visibility = ["//visibility:public"],
     deps = ["//pkg/graph:go_default_library"],

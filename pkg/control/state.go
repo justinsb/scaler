@@ -1,7 +1,6 @@
 package control
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/golang/glog"
@@ -62,15 +61,23 @@ func (c *State) Query() interface{} {
 
 var _ graph.Graphable = &State{}
 
-func (c *State) BuildGraph() (*graph.Model, error) {
+func (c *State) ListGraphs() ([]*graph.Metadata, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	for _, v := range c.policies {
-		graph, err := v.BuildGraph()
-		return graph, err
+	var metadata []*graph.Metadata
+
+	for k, v := range c.policies {
+		graphs, err := v.ListGraphs()
+		if err != nil {
+			return nil, err
+		}
+		for _, g := range graphs {
+			g.Key = k.Namespace + "/" + k.Name + "/" + g.Key
+			metadata = append(metadata, g)
+		}
 	}
-	return nil, fmt.Errorf("no policies")
+	return metadata, nil
 }
 
 func (c *State) Run(stopCh <-chan struct{}) {

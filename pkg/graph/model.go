@@ -6,8 +6,15 @@ type Model struct {
 	Series []*Series `json:"series"`
 }
 
+type BuilderFunction func() (*Model, error)
+
+type Metadata struct {
+	Key     string `json:"key"`
+	Builder BuilderFunction
+}
+
 type Graphable interface {
-	BuildGraph() (*Model, error)
+	ListGraphs() ([]*Metadata, error)
 }
 
 func (g *Model) GetSeries(key string) *Series {
