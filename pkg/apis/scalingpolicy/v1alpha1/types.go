@@ -42,12 +42,12 @@ type ScalingPolicySpec struct {
 
 	// reference to scaled resource; horizontal pod autoscaler will learn the current resource consumption
 	// and will set the desired number of pods by using its Scale subresource.
-	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef" protobuf:"bytes,1,opt,name=scaleTargetRef"`
+	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef""`
 
-	Containers []ContainerScalingRule `json:"containers" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,2,rep,name=containers"`
+	Containers []ContainerScalingRule `json:"containers" patchStrategy:"merge"`
 
 	// TODO: Should this be at the ContainerScalingRule level?
-	Smoothing SmoothingRule `json:"smoothing,omitempty" protobuf:"bytes,2,rep,name=quantization,casttype=ResourceList,castkey=ResourceName"`
+	Smoothing SmoothingRule `json:"smoothing,omitempty"`
 }
 
 type QuantizationRule struct {
@@ -81,15 +81,14 @@ type ContainerScalingRule struct {
 	// Name of the container specified as a DNS_LABEL.
 	// Each container in a pod must have a unique name (DNS_LABEL).
 	// Cannot be updated.
-	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	Name string `json:"name"`
 
 	// Compute Resources required by this container.
 	// cf Container resources
 	// +optional
-	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+	Resources ResourceRequirements `json:"resources,omitempty"`
 
-	// TODO: fix protobuf rules
-	Quantization []QuantizationRule `json:"quantization,omitempty" protobuf:"bytes,2,rep,name=quantization,casttype=ResourceList,castkey=ResourceName"`
+	Quantization []QuantizationRule `json:"quantization,omitempty"`
 }
 
 // ResourceScaling configures
@@ -97,13 +96,13 @@ type ResourceRequirements struct {
 	// Limits describes the maximum amount of compute resources allowed.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	// +optional
-	Limits []ResourceScalingRule `json:"limits,omitempty" protobuf:"bytes,1,rep,name=limits,casttype=ResourceList,castkey=ResourceName"`
+	Limits []ResourceScalingRule `json:"limits,omitempty"`
 	// Requests describes the minimum amount of compute resources required.
 	// If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
 	// otherwise to an implementation-defined value.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	// +optional
-	Requests []ResourceScalingRule `json:"requests,omitempty" protobuf:"bytes,2,rep,name=requests,casttype=ResourceList,castkey=ResourceName"`
+	Requests []ResourceScalingRule `json:"requests,omitempty"`
 }
 
 type ResourceScalingRule struct {
