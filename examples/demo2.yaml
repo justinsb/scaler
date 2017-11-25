@@ -1,7 +1,7 @@
 apiVersion: scalingpolicy.kope.io/v1alpha1
 kind: ScalingPolicy
 metadata:
-  name: kube-dns
+  name: kube-dashboard
   namespace: kube-system
 spec:
   scaleTargetRef:
@@ -22,6 +22,7 @@ spec:
     - resource: cpu
       step: 16m
   smoothing:
-    scaleDownShift:
-      inputs:
-        cores: 20
+    percentile:
+      target: 0.80
+      lowThreshold: 0.60
+      highThreshold: 0.85

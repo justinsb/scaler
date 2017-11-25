@@ -23,15 +23,15 @@ type Graphable interface {
 	ListGraphs() ([]*Metadata, error)
 }
 
-func (g *Model) GetSeries(key string) *Series {
+func (g *Model) GetSeries(key string, options *Series) *Series {
 	for _, s := range g.Series {
 		if s.Key == key {
 			return s
 		}
 	}
-	s := &Series{
-		Key: key,
-	}
+	s := &Series{}
+	*s = *options
+	s.Key = key
 	g.Series = append(g.Series, s)
 	return s
 }
@@ -40,6 +40,9 @@ type Series struct {
 	Key    string  `json:"key"`
 	Units  string  `json:"units"`
 	Values []Value `json:"values"`
+
+	StrokeWidth float32 `json:"strokeWidth,omitempty"`
+	Classed     string  `json:"classed,omitempty"`
 }
 
 type Axis struct {
@@ -58,7 +61,7 @@ type Value struct {
 	Y float64 `json:"y"`
 }
 
-func AddPodDataPoints(graph *Model, prefix string, x float64, podSpec *v1.PodSpec) {
+func AddPodDataPoints(graph *Model, prefix string, x float64, podSpec *v1.PodSpec, options *Series) {
 	for i := range podSpec.Containers {
 		container := &podSpec.Containers[i]
 
@@ -66,7 +69,7 @@ func AddPodDataPoints(graph *Model, prefix string, x float64, podSpec *v1.PodSpe
 			v, units := resourceToFloat(k, q)
 
 			label := prefix + string(k) + "_limits_" + container.Name
-			s := graph.GetSeries(label)
+			s := graph.GetSeries(label, options)
 			s.AddXYPoint(x, v)
 			s.Units = units
 		}
@@ -75,7 +78,7 @@ func AddPodDataPoints(graph *Model, prefix string, x float64, podSpec *v1.PodSpe
 			v, units := resourceToFloat(k, q)
 
 			label := prefix + string(k) + "_requests_" + container.Name
-			s := graph.GetSeries(label)
+			s := graph.GetSeries(label, options)
 			s.AddXYPoint(x, v)
 			s.Units = units
 		}

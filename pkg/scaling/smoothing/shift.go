@@ -37,13 +37,13 @@ func (s *ResourceShiftSmoothing) UpdateTarget(snapshot factors.Snapshot, policy 
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("computed target values: %s", debug.Print(podSpec))
+	glog.V(8).Infof("computed target values: %s", debug.Print(podSpec))
 
 	scaleDownPodSpec, err := scaling.ComputeResourcesShifted(snapshot, policy, &s.rule)
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("computed shifted values: %s", debug.Print(scaleDownPodSpec))
+	glog.V(8).Infof("computed shifted values: %s", debug.Print(scaleDownPodSpec))
 
 	s.latestTarget = podSpec
 	s.latestScaleDown = scaleDownPodSpec
@@ -96,7 +96,7 @@ func (s *ResourceShiftSmoothing) ComputeChange(parentPath string, current *v1.Po
 			continue
 		}
 
-		scaleDownContainer := findContainerByName(current.Containers, containerName)
+		scaleDownContainer := findContainerByName(s.latestScaleDown.Containers, containerName)
 		if scaleDownContainer == nil {
 			scaleDownContainer = &v1.Container{}
 		}
@@ -132,34 +132,41 @@ func (s *ResourceShiftSmoothing) updateResourceList(parentPath string, currentRe
 	changed := false
 	var changes v1.ResourceList
 
-	for k, v := range target {
+	for k, targetV := range target {
 		path := parentPath + "." + string(k)
 
 		currentQuantity, found := currentResources[k]
 		if !found {
-			glog.V(8).Infof("value for %s not found; will treat as zero", path)
+			glog.V(4).Infof("value for %s not found; will treat as zero", path)
 		}
 
-		cmp := currentQuantity.Cmp(v)
+		cmp := currentQuantity.Cmp(targetV)
 		if cmp == 0 {
-			glog.V(8).Infof("value for %s matches target: %s", path, v)
+			glog.V(8).Infof("value for %s matches target: %s", path, targetV.String())
 			continue
 		}
 
-		if cmp < 0 {
-			// Scale down candidate, compare to scale-down threshold
+		if cmp > 0 {
+			// The current value is greater than the target value, so we are thinking about scaling down.
+			// We only scale down if we are above the scale-down threshold however, to avoid flapping
 			scaleDownV, found := scaleDown[k]
-			if found && currentQuantity.Cmp(scaleDownV) >= 0 {
-				glog.V(8).Infof("value for %s is below target (%s), but above scale-down threshold (%s)", path, v, scaleDownV)
+			if found && currentQuantity.Cmp(scaleDownV) < 0 {
+				glog.V(4).Infof("value for %s is below target (%s), but below scale-down threshold (%s)", path, targetV.String(), scaleDownV.String())
 				continue
+			} else {
+				glog.V(2).Infof("will scale down %s.  target %s, threshold %s, actual %s", path, targetV.String(), scaleDownV.String(), currentQuantity.String())
 			}
+		}
+
+		if cmp < 0 {
+			glog.V(2).Infof("will scale up %s.  target %s, threshold -, actual %s", path, targetV.String(), currentQuantity.String())
 		}
 
 		changed = true
 		if changes == nil {
 			changes = make(v1.ResourceList)
 		}
-		changes[k] = v
+		changes[k] = targetV
 	}
 
 	return changed, changes

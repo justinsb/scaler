@@ -43,7 +43,7 @@ func ComputeResources(inputs factors.Snapshot, policy *scalingpolicy.ScalingPoli
 func ComputeResourcesShifted(snapshot factors.Snapshot, policy *scalingpolicy.ScalingPolicySpec, shift *scalingpolicy.ShiftSmoothing) (*v1.PodSpec, error) {
 	shifts := make(map[string]float64)
 	for k, v := range shift.Inputs {
-		shifts[k] = -v
+		shifts[k] = v
 	}
 	shifted := factors.Shift(snapshot, shifts)
 	return ComputeResources(shifted, policy)

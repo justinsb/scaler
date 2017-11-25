@@ -5,6 +5,7 @@ import "k8s.io/api/core/v1"
 type Info struct {
 	LatestTarget       *v1.PodSpec `json:"latestTarget"`
 	ScaleDownThreshold *v1.PodSpec `json:"scaleDownThreshold"`
+	ScaleUpThreshold   *v1.PodSpec `json:"scaleUpThreshold"`
 
 	LatestActual *v1.PodSpec `json:"latestActual"`
 

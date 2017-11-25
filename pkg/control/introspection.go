@@ -68,7 +68,7 @@ func (s *PolicyState) buildGraph(factor string) (*graph.Model, error) {
 			continue
 		}
 
-		graph.AddPodDataPoints(g, "", float64(x), podSpec)
+		graph.AddPodDataPoints(g, "", float64(x), podSpec, &graph.Series{})
 
 		if s.policy.Spec.Smoothing.ScaleDownShift != nil {
 			scaleDownPodSpec, err := scaling.ComputeResourcesShifted(snapshot, &s.policy.Spec, s.policy.Spec.Smoothing.ScaleDownShift)
@@ -77,7 +77,7 @@ func (s *PolicyState) buildGraph(factor string) (*graph.Model, error) {
 				continue
 			}
 
-			graph.AddPodDataPoints(g, "scaledown_", float64(x), scaleDownPodSpec)
+			graph.AddPodDataPoints(g, "scaledown_", float64(x), scaleDownPodSpec, &graph.Series{})
 		}
 	}
 
@@ -112,16 +112,22 @@ func (s *PolicyState) ListSimulations() ([]*simulate.Metadata, error) {
 	return metadata, nil
 }
 
+type StateInfo struct {
+	Policies map[string]*PolicyInfo `json:"policies"`
+}
+
 // Query returns the current state, for reporting e.g. via the /statz endpoint
 func (c *State) Query() interface{} {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	result := make(map[string]*PolicyInfo)
-	for k, v := range c.policies {
-		result[k.String()] = v.Query()
+	info := &StateInfo{
+		Policies: make(map[string]*PolicyInfo),
 	}
-	return result
+	for k, v := range c.policies {
+		info.Policies[k.String()] = v.Query()
+	}
+	return info
 }
 
 var _ graph.Graphable = &State{}

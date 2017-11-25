@@ -61,7 +61,23 @@ func RunSimulation(policy *scalingpolicy.ScalingPolicy, options *options.AutoSca
 			}
 		}
 
-		run.Add(t, universe.ClusterState, universe.Current)
+		si := state.Query().(*StateInfo)
+
+		var pi *PolicyInfo
+		for k := range si.Policies {
+			pi = si.Policies[k]
+		}
+
+		var latestTarget *v1.PodSpec
+		var scaleDownThreshold *v1.PodSpec
+		var scaleUpThreshold *v1.PodSpec
+		if pi != nil && pi.State != nil {
+			latestTarget = pi.State.LatestTarget
+			scaleDownThreshold = pi.State.ScaleDownThreshold
+			scaleUpThreshold = pi.State.ScaleUpThreshold
+		}
+
+		run.Add(t, universe.ClusterState, universe.Current, latestTarget, scaleDownThreshold, scaleUpThreshold)
 	}
 
 	if len(errors) != 0 {

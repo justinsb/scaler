@@ -1,7 +1,7 @@
 apiVersion: scalingpolicy.kope.io/v1alpha1
 kind: ScalingPolicy
 metadata:
-  name: kube-dns
+  name: kube-dashboard
   namespace: kube-system
 spec:
   scaleTargetRef:

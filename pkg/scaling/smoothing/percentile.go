@@ -56,7 +56,10 @@ type PercentileSmoothing struct {
 
 	containers map[string]*containerStatus
 
-	latestTarget *v1.PodSpec
+	latestTarget             *v1.PodSpec
+	latestScaleUpThreshold   *v1.PodSpec
+	latestScaleDownThreshold *v1.PodSpec
+
 	latestActual *v1.PodSpec
 
 	rule v1alpha1.PercentileSmoothing
@@ -153,6 +156,9 @@ func (s *PercentileSmoothing) ComputeChange(parentPath string, current *v1.PodSp
 		return podChanged, podChanges
 	}
 
+	scaleDownThreshold := &v1.PodSpec{}
+	scaleUpThreshold := &v1.PodSpec{}
+
 	for i := range s.latestTarget.Containers {
 		containerTarget := &s.latestTarget.Containers[i]
 		containerName := containerTarget.Name
@@ -163,42 +169,53 @@ func (s *PercentileSmoothing) ComputeChange(parentPath string, current *v1.PodSp
 			continue
 		}
 
-		var currentContainer *v1.Container
-		for i := range current.Containers {
-			c := &current.Containers[i]
-			if c.Name == containerName {
-				currentContainer = c
-				break
-			}
-		}
-
+		currentContainer := findContainerByName(current.Containers, containerName)
 		if currentContainer == nil {
 			glog.Warningf("ignoring target for non-existent container %q", containerName)
 			continue
 		}
 
-		if changed, changes := s.updateContainer(containerName, currentContainer, containerTarget, status); changed {
+		scaleDownThresholdContainer := &v1.Container{Name: containerName}
+		scaleUpThresholdContainer := &v1.Container{Name: containerName}
+
+		if changed, changes := s.updateContainer(containerName, currentContainer, containerTarget, scaleDownThresholdContainer, scaleUpThresholdContainer, status); changed {
 			podChanges.Containers = append(podChanges.Containers, *changes)
 			podChanged = true
 		}
+
+		scaleDownThreshold.Containers = append(scaleDownThreshold.Containers, *scaleDownThresholdContainer)
+		scaleUpThreshold.Containers = append(scaleUpThreshold.Containers, *scaleUpThresholdContainer)
 	}
 
+	s.latestScaleUpThreshold = scaleUpThreshold
+	s.latestScaleDownThreshold = scaleDownThreshold
 	return podChanged, podChanges
 
 }
 
-func (s *PercentileSmoothing) updateContainer(path string, currentContainer *v1.Container, target *v1.Container, status *containerStatus) (bool, *v1.Container) {
+func (s *PercentileSmoothing) updateContainer(
+	path string,
+	currentContainer *v1.Container,
+	target *v1.Container,
+	scaleDownThreshold *v1.Container,
+	scaleUpThreshold *v1.Container,
+	status *containerStatus) (bool, *v1.Container) {
 	containerChanged := false
 	containerChanges := new(v1.Container)
 
 	containerChanges.Name = target.Name
 
-	if changed, changes := s.updateResourceList(path+".Limits", currentContainer.Resources.Limits, target.Resources.Limits, &status.limits); changed {
+	scaleDownThreshold.Resources.Limits = make(v1.ResourceList)
+	scaleUpThreshold.Resources.Limits = make(v1.ResourceList)
+	scaleDownThreshold.Resources.Requests = make(v1.ResourceList)
+	scaleUpThreshold.Resources.Requests = make(v1.ResourceList)
+
+	if changed, changes := s.updateResourceList(path+".Limits", currentContainer.Resources.Limits, target.Resources.Limits, scaleDownThreshold.Resources.Limits, scaleUpThreshold.Resources.Limits, &status.limits); changed {
 		containerChanges.Resources.Limits = changes
 		containerChanged = true
 	}
 
-	if changed, changes := s.updateResourceList(path+".Requests", currentContainer.Resources.Requests, target.Resources.Requests, &status.requests); changed {
+	if changed, changes := s.updateResourceList(path+".Requests", currentContainer.Resources.Requests, target.Resources.Requests, scaleDownThreshold.Resources.Requests, scaleUpThreshold.Resources.Requests, &status.requests); changed {
 		containerChanges.Resources.Requests = changes
 		containerChanged = true
 	}
@@ -206,7 +223,14 @@ func (s *PercentileSmoothing) updateContainer(path string, currentContainer *v1.
 	return containerChanged, containerChanges
 }
 
-func (s *PercentileSmoothing) updateResourceList(parentPath string, currentResources v1.ResourceList, target v1.ResourceList, status *resourceStatusMap) (bool, v1.ResourceList) {
+func (s *PercentileSmoothing) updateResourceList(
+	parentPath string,
+	currentResources v1.ResourceList,
+	target v1.ResourceList,
+	scaleDownThreshold v1.ResourceList,
+	scaleUpThreshold v1.ResourceList,
+	status *resourceStatusMap) (bool, v1.ResourceList) {
+
 	changed := false
 	var changes v1.ResourceList
 
@@ -222,11 +246,14 @@ func (s *PercentileSmoothing) updateResourceList(parentPath string, currentResou
 				glog.Infof("insufficient data to compute percentile value for %s @ %f", path, s.rule.LowThreshold)
 				continue
 			}
+			scaleDownThreshold[resource] = pLow
+
 			pHigh, ok := rs.histogram.Percentile(s.rule.HighThreshold)
 			if !ok {
 				glog.Infof("insufficient data to compute percentile value for %s @ %f", path, s.rule.HighThreshold)
 				continue
 			}
+			scaleUpThreshold[resource] = pHigh
 
 			if currentQuantity.Cmp(pLow) >= 0 && currentQuantity.Cmp(pHigh) <= 0 {
 				// Value in tolerable range
@@ -257,20 +284,12 @@ func (s *PercentileSmoothing) Query() *http.Info {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	var actual *v1.PodSpec
-	if s.latestActual != nil {
-		actual = &v1.PodSpec{}
-		for _, c := range s.latestActual.Containers {
-			actual.Containers = append(actual.Containers, v1.Container{
-				Name:      c.Name,
-				Resources: c.Resources,
-			})
-		}
-	}
 	info := &http.Info{
-		LatestTarget: s.latestTarget,
-		LatestActual: actual,
-		Histograms:   make(map[string]*http.HistogramInfo),
+		LatestTarget:       s.latestTarget,
+		ScaleDownThreshold: s.latestScaleDownThreshold,
+		ScaleUpThreshold:   s.latestScaleUpThreshold,
+		LatestActual:       s.latestActual,
+		Histograms:         make(map[string]*http.HistogramInfo),
 	}
 
 	for k, container := range s.containers {

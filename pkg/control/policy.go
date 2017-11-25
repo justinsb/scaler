@@ -48,7 +48,15 @@ func (s *PolicyState) computeTargetValues(snapshot factors.Snapshot) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	glog.V(4).Infof("computing target values")
+	policy := s.policy
+
+	kind := policy.Spec.ScaleTargetRef.Kind
+	namespace := policy.Namespace
+	name := policy.Spec.ScaleTargetRef.Name
+
+	path := fmt.Sprintf("%s/%s/%s", kind, namespace, name)
+
+	glog.V(4).Infof("computing target values for %s", path)
 
 	return s.smoothing.UpdateTarget(snapshot, &s.policy.Spec)
 }
