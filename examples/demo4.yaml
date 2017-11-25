@@ -1,0 +1,26 @@
+apiVersion: scalingpolicy.kope.io/v1alpha1
+kind: ScalingPolicy
+metadata:
+  name: kube-dashboard
+  namespace: kube-system
+spec:
+  scaleTargetRef:
+    kind: deployment
+    name: kubernetes-dashboard
+  containers:
+  - name: kubernetes-dashboard
+    resources:
+      limits:
+      - resource: cpu
+        base: 200m
+        input: cores
+        step: 250m
+    quantization:
+    - resource: cpu
+      step: 500m
+      stepRatio: 2
+      maxStep: 8
+  smoothing:
+    scaleDownShift:
+      inputs:
+        cores: 20
