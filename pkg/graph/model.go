@@ -1,5 +1,11 @@
 package graph
 
+import (
+	"github.com/golang/glog"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+)
+
 type Model struct {
 	XAxis  Axis      `json:"xAxis"`
 	YAxis  Axis      `json:"yAxis"`
@@ -50,4 +56,48 @@ func (s *Series) AddXYPoint(x float64, y float64) {
 type Value struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
+}
+
+func AddPodDataPoints(graph *Model, prefix string, x float64, podSpec *v1.PodSpec) {
+	for i := range podSpec.Containers {
+		container := &podSpec.Containers[i]
+
+		for k, q := range container.Resources.Limits {
+			v, units := resourceToFloat(k, q)
+
+			label := prefix + string(k) + "_limits_" + container.Name
+			s := graph.GetSeries(label)
+			s.AddXYPoint(x, v)
+			s.Units = units
+		}
+
+		for k, q := range container.Resources.Requests {
+			v, units := resourceToFloat(k, q)
+
+			label := prefix + string(k) + "_requests_" + container.Name
+			s := graph.GetSeries(label)
+			s.AddXYPoint(x, v)
+			s.Units = units
+		}
+	}
+}
+
+func resourceToFloat(k v1.ResourceName, q resource.Quantity) (float64, string) {
+	var v float64
+	var units string
+	switch k {
+	case v1.ResourceCPU:
+		v = float64(q.MilliValue()) / 1000.0
+		units = "CPU cores"
+	case v1.ResourceMemory:
+		v = float64(q.Value())
+		units = "bytes"
+
+	default:
+		glog.Warningf("unhandled resource type in statz %s", k)
+		v = float64(q.Value())
+		units = ""
+	}
+
+	return v, units
 }

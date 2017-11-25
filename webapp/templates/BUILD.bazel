@@ -5,8 +5,13 @@ go_library(
     srcs = [
         "graph.html.go",
         "graphlist.html.go",
+        "simulate.go",
+        "simulatelist.go",
     ],
     importpath = "github.com/justinsb/scaler/webapp/templates",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/graph:go_default_library"],
+    deps = [
+        "//pkg/graph:go_default_library",
+        "//pkg/simulate:go_default_library",
+    ],
 )

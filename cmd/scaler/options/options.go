@@ -33,6 +33,7 @@ type AutoScalerConfig struct {
 	//DefaultConfig     string
 	//ConfigFile        string
 	PollPeriod   time.Duration
+	UpdatePeriod time.Duration
 	Kubeconfig   string
 	PrintVersion bool
 	DryRun       bool
@@ -45,6 +46,7 @@ func NewAutoScalerConfig() *AutoScalerConfig {
 		// Defaults.
 		//Namespace:         os.Getenv("MY_NAMESPACE"),
 		PollPeriod:   time.Second * 10,
+		UpdatePeriod: time.Second * 10,
 		PrintVersion: false,
 		DryRun:       false,
 	}
@@ -57,6 +59,7 @@ func (c *AutoScalerConfig) AddFlags(fs *pflag.FlagSet) {
 	//fs.StringVar(&c.DefaultConfig, "default-config", c.DefaultConfig, "The default configuration (in JSON format).")
 	//fs.StringVar(&c.ConfigFile, "config-file", c.ConfigFile, "A config file (in JSON format), which overrides the --default-config.")
 	fs.DurationVar(&c.PollPeriod, "poll-period", c.PollPeriod, "The period to poll cluster state.")
+	fs.DurationVar(&c.UpdatePeriod, "update-period", c.PollPeriod, "The period with which we consider applying resource changes.")
 	fs.StringVar(&c.Kubeconfig, "kubeconfig", c.Kubeconfig, "Path to a kubeconfig. Only required if running out-of-cluster.")
 	fs.BoolVar(&c.PrintVersion, "version", c.PrintVersion, "Print the version and exit.")
 	fs.BoolVar(&c.DryRun, "dry-run", c.DryRun, "Calculate updates for a target but does not apply the update.")
@@ -96,7 +99,11 @@ func (c *AutoScalerConfig) ValidateFlags() error {
 	//}
 	if c.PollPeriod.Seconds() < 1.0 {
 		errorsFound = true
-		glog.Errorf("--poll-period-seconds cannot be less than 1")
+		glog.Errorf("--poll-period cannot be less than 1")
+	}
+	if c.UpdatePeriod.Seconds() < 1.0 {
+		errorsFound = true
+		glog.Errorf("--update-period cannot be less than 1")
 	}
 
 	// Log all sanity check errors before returning a single error string

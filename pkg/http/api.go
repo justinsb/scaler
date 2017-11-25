@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/justinsb/scaler/cmd/scaler/options"
 	"github.com/justinsb/scaler/pkg/graph"
+	"github.com/justinsb/scaler/pkg/simulate"
 )
 
 type APIServer struct {
@@ -28,7 +29,8 @@ func NewAPIServer(options *options.AutoScalerConfig, state HasState) (*APIServer
 	mux.Handle("/api/statz", &Targets{state: state})
 
 	ui := &UI{
-		graphable: state.(graph.Graphable),
+		simulatable: state.(simulate.Simulatable),
+		graphable:   state.(graph.Graphable),
 	}
 	ui.AddHandlers(mux)
 

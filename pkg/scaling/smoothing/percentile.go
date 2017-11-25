@@ -2,7 +2,6 @@ package smoothing
 
 import (
 	"sync"
-	"time"
 
 	"github.com/golang/glog"
 	"github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
@@ -10,6 +9,7 @@ import (
 	"github.com/justinsb/scaler/pkg/factors"
 	"github.com/justinsb/scaler/pkg/http"
 	"github.com/justinsb/scaler/pkg/scaling"
+	"github.com/justinsb/scaler/pkg/timeutil"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -50,7 +50,7 @@ func (r *resourceStatusMap) Get(key v1.ResourceName) *resourceStatus {
 // It tracks a sliding-window of recent target values, and will only change the smoothed value when the current
 // value is not in the 70-90% range.  When the current value is out of range, we will set it to the 80% optimum value.
 type PercentileSmoothing struct {
-	baseTime time.Time
+	clock *timeutil.MonotonicClock
 
 	mutex sync.Mutex
 
@@ -62,9 +62,9 @@ type PercentileSmoothing struct {
 	rule v1alpha1.PercentileSmoothing
 }
 
-func NewPercentileSmoothing(rule *v1alpha1.PercentileSmoothing) Smoothing {
+func NewPercentileSmoothing(clock *timeutil.MonotonicClock, rule *v1alpha1.PercentileSmoothing) Smoothing {
 	s := &PercentileSmoothing{
-		baseTime: time.Now(),
+		clock: clock,
 
 		containers: make(map[string]*containerStatus),
 	}
@@ -73,8 +73,6 @@ func NewPercentileSmoothing(rule *v1alpha1.PercentileSmoothing) Smoothing {
 }
 
 func (s *PercentileSmoothing) UpdateTarget(snapshot factors.Snapshot, policy *v1alpha1.ScalingPolicySpec) error {
-	t := time.Now()
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -87,7 +85,7 @@ func (s *PercentileSmoothing) UpdateTarget(snapshot factors.Snapshot, policy *v1
 
 	s.latestTarget = podSpec
 
-	reltime := t.Sub(s.baseTime).Nanoseconds()
+	reltime := s.clock.Nanos()
 
 	for _, container := range podSpec.Containers {
 		cs := s.containers[container.Name]
@@ -277,10 +275,10 @@ func (s *PercentileSmoothing) Query() *http.Info {
 
 	for k, container := range s.containers {
 		for m, metric := range container.requests.m {
-			info.Histograms[k+".requests."+string(m)] = metric.histogram.Query(s.baseTime)
+			info.Histograms[k+".requests."+string(m)] = metric.histogram.Query(s.clock)
 		}
 		for m, metric := range container.limits.m {
-			info.Histograms[k+".limits."+string(m)] = metric.histogram.Query(s.baseTime)
+			info.Histograms[k+".limits."+string(m)] = metric.histogram.Query(s.clock)
 		}
 	}
 	return info

@@ -3,11 +3,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["model.go"],
-    importpath = "github.com/justinsb/scaler/pkg/graph",
+    importpath = "github.com/justinsb/scaler/pkg/simulate",
     visibility = ["//visibility:public"],
     deps = [
-        "//vendor/github.com/golang/glog:go_default_library",
+        "//pkg/control/target:go_default_library",
+        "//pkg/graph:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",
     ],
 )

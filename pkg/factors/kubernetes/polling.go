@@ -1,41 +1,37 @@
 package kubernetes
 
 import (
-	"fmt"
 	"sync"
 
+	"github.com/justinsb/scaler/pkg/control/target"
 	"github.com/justinsb/scaler/pkg/factors"
 	v1 "k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 type pollingKubernetesFactors struct {
-	client kubernetes.Interface
+	target target.Interface
 }
 
 var _ factors.Interface = &pollingKubernetesFactors{}
 
 type pollingKubernetesSnapshot struct {
-	client kubernetes.Interface
+	target target.Interface
 
-	mutex              sync.Mutex
-	nodeSumAllocatable v1.ResourceList
-	nodeCount          int
+	mutex sync.Mutex
+	stats *target.ClusterStats
 }
 
 var _ factors.Snapshot = &pollingKubernetesSnapshot{}
 
-func NewPollingKubernetesFactors(client kubernetes.Interface) factors.Interface {
-	p := &pollingKubernetesFactors{
-		client: client,
+func NewPollingKubernetesFactors(target target.Interface) factors.Interface {
+	return &pollingKubernetesFactors{
+		target: target,
 	}
-	return p
 }
 
 func (k *pollingKubernetesFactors) Snapshot() (factors.Snapshot, error) {
 	return &pollingKubernetesSnapshot{
-		client: k.client,
+		target: k.target,
 	}, nil
 }
 
@@ -47,10 +43,10 @@ func (s *pollingKubernetesSnapshot) Get(key string) (float64, bool, error) {
 	// TODO: Syntax here is not very consistent e.g. sum(nodes.allocatable.cpu) or count(nodes)
 	case "cores":
 		{
-			if err := s.ensureNodeStats(); err != nil {
+			if err := s.ensureClusterStats(); err != nil {
 				return 0, true, err
 			}
-			r, found := s.nodeSumAllocatable[v1.ResourceCPU]
+			r, found := s.stats.NodeSumAllocatable[v1.ResourceCPU]
 			if found {
 				return float64(r.Value()), true, nil
 			} else {
@@ -61,10 +57,10 @@ func (s *pollingKubernetesSnapshot) Get(key string) (float64, bool, error) {
 		}
 	case "memory":
 		{
-			if err := s.ensureNodeStats(); err != nil {
+			if err := s.ensureClusterStats(); err != nil {
 				return 0, true, err
 			}
-			r, found := s.nodeSumAllocatable[v1.ResourceMemory]
+			r, found := s.stats.NodeSumAllocatable[v1.ResourceMemory]
 			if found {
 				return float64(r.Value()), true, nil
 			} else {
@@ -75,10 +71,10 @@ func (s *pollingKubernetesSnapshot) Get(key string) (float64, bool, error) {
 		}
 	case "nodes":
 		{
-			if err := s.ensureNodeStats(); err != nil {
+			if err := s.ensureClusterStats(); err != nil {
 				return 0, true, err
 			}
-			return float64(s.nodeCount), true, nil
+			return float64(s.stats.NodeCount), true, nil
 		}
 	default:
 		// unknown
@@ -86,39 +82,15 @@ func (s *pollingKubernetesSnapshot) Get(key string) (float64, bool, error) {
 	}
 }
 
-func (s *pollingKubernetesSnapshot) ensureNodeStats() error {
-	if s.nodeCount != 0 {
+func (s *pollingKubernetesSnapshot) ensureClusterStats() error {
+	if s.stats != nil {
 		return nil
 	}
 
-	nodes, err := s.client.CoreV1().Nodes().List(meta_v1.ListOptions{})
+	stats, err := s.target.ReadClusterState()
 	if err != nil {
-		return fmt.Errorf("error listing nodes: %v", err)
+		return err
 	}
-
-	allocatable := make(v1.ResourceList)
-	nodeCount := 0
-	for i := range nodes.Items {
-		node := &nodes.Items[i]
-
-		nodeCount++
-		addResourceList(allocatable, node.Status.Allocatable)
-	}
-
-	s.nodeCount = nodeCount
-	s.nodeSumAllocatable = allocatable
-
+	s.stats = stats
 	return nil
-}
-
-func addResourceList(sum v1.ResourceList, inc v1.ResourceList) {
-	for k, v := range inc {
-		a, found := sum[k]
-		if !found {
-			sum[k] = v
-		} else {
-			a.Add(v)
-			sum[k] = a
-		}
-	}
 }

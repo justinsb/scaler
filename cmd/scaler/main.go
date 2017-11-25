@@ -26,6 +26,7 @@ import (
 	clientset "github.com/justinsb/scaler/pkg/client/clientset/versioned"
 	informers "github.com/justinsb/scaler/pkg/client/informers/externalversions"
 	"github.com/justinsb/scaler/pkg/control"
+	"github.com/justinsb/scaler/pkg/control/target"
 	"github.com/justinsb/scaler/pkg/http"
 	"github.com/justinsb/scaler/pkg/signals"
 	"github.com/justinsb/scaler/pkg/version"
@@ -45,6 +46,7 @@ func main() {
 		fmt.Printf("%s\n", version.VERSION)
 		os.Exit(0)
 	}
+
 	// Perform further validation of flags.
 	if err := config.ValidateFlags(); err != nil {
 		glog.Errorf("%v", err)
@@ -91,7 +93,12 @@ func run(config *options.AutoScalerConfig) error {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	scalerInformerFactory := informers.NewSharedInformerFactory(scalingClient, time.Second*30)
 
-	state, err := control.NewState(kubeClient, config)
+	t, err := target.NewKubernetesTarget(kubeClient)
+	if err != nil {
+		return err
+	}
+
+	state, err := control.NewState(t, config)
 	if err != nil {
 		return fmt.Errorf("error initializing: %v", err)
 	}

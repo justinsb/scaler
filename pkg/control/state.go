@@ -6,19 +6,19 @@ import (
 	"github.com/golang/glog"
 	"github.com/justinsb/scaler/cmd/scaler/options"
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
-	"github.com/justinsb/scaler/pkg/control/k8sclient"
+	"github.com/justinsb/scaler/pkg/control/target"
 	"github.com/justinsb/scaler/pkg/factors"
 	k8sfactors "github.com/justinsb/scaler/pkg/factors/kubernetes"
-	"github.com/justinsb/scaler/pkg/graph"
+	"github.com/justinsb/scaler/pkg/timeutil"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 )
 
 // State holds the current parent and state around applying them
 type State struct {
-	client  kubernetes.Interface
-	patcher k8sclient.ResourcePatcher
+	clock   *timeutil.MonotonicClock
+	target  target.Interface
 	options *options.AutoScalerConfig
 	factors factors.Interface
 
@@ -26,58 +26,17 @@ type State struct {
 	policies map[types.NamespacedName]*PolicyState
 }
 
-func NewState(client kubernetes.Interface, options *options.AutoScalerConfig) (*State, error) {
+func NewState(target target.Interface, options *options.AutoScalerConfig) (*State, error) {
 	p := &State{
-		client:   client,
+		clock:    timeutil.NewMonotonicClock(&clock.RealClock{}),
+		target:   target,
 		options:  options,
 		policies: make(map[types.NamespacedName]*PolicyState),
 	}
 
-	var err error
-	p.patcher, err = k8sclient.NewKubernetesPatcher(client)
-	if err != nil {
-		return nil, err
-	}
-
-	p.factors = k8sfactors.NewPollingKubernetesFactors(client)
-	if err != nil {
-		return nil, err
-	}
+	p.factors = k8sfactors.NewPollingKubernetesFactors(target)
 
 	return p, nil
-}
-
-// Query returns the current state, for reporting e.g. via the /statz endpoint
-func (c *State) Query() interface{} {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	result := make(map[string]*PolicyInfo)
-	for k, v := range c.policies {
-		result[k.String()] = v.Query()
-	}
-	return result
-}
-
-var _ graph.Graphable = &State{}
-
-func (c *State) ListGraphs() ([]*graph.Metadata, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	var metadata []*graph.Metadata
-
-	for k, v := range c.policies {
-		graphs, err := v.ListGraphs()
-		if err != nil {
-			return nil, err
-		}
-		for _, g := range graphs {
-			g.Key = k.Namespace + "/" + k.Name + "/" + g.Key
-			metadata = append(metadata, g)
-		}
-	}
-	return metadata, nil
 }
 
 func (c *State) Run(stopCh <-chan struct{}) {
@@ -95,7 +54,7 @@ func (c *State) Run(stopCh <-chan struct{}) {
 			// TODO: Report as event
 			glog.Warningf("error computing target values: %v", err)
 		}
-	}, c.options.PollPeriod, stopCh)
+	}, c.options.UpdatePeriod, stopCh)
 }
 
 func (c *State) remove(namespace, name string) {
