@@ -114,6 +114,17 @@ type ResourceScalingRule struct {
 	Base  resource.Quantity `json:"base,omitempty"`
 	Slope resource.Quantity `json:"slope,omitempty"`
 	Max   resource.Quantity `json:"max,omitempty"`
+
+	Segments []ResourceScalingSegment `json:"segments,omitempty"`
+}
+
+// ResourceScalingSegment describes a segment of input values and the rounding policy we apply to it
+type ResourceScalingSegment struct {
+	// The segment applies to values greater than or equal to at.  The "closest" segment is selected
+	At float64 `json:"at,omitempty"`
+
+	// RoundTo specifies the granularity to which we round.  We always round up to the next multiple of roundTo.
+	RoundTo float64 `json:"roundTo,omitempty"`
 }
 
 // ScalingPolicyStatus is the status for an ScalingPolicy resource
