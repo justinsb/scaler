@@ -31,10 +31,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const KindReplicaSet = "ReplicaSet"
-const KindDaemonSet = "DaemonSet"
-const KindDeployment = "Deployment"
-
 type ResourcePatcher interface {
 	UpdateResources(kind, namespace, name string, update *corev1.PodSpec, dryRun bool) error
 }
