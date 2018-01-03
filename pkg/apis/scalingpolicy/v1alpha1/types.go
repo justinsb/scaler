@@ -73,7 +73,7 @@ type ShiftSmoothing struct {
 
 type SmoothingRule struct {
 	Percentile     *PercentileSmoothing `json:"percentile,omitempty"`
-	ScaleDownShift *ShiftSmoothing      `json:"scaleDownShift,omitempty"`
+	DelayScaleDown *ShiftSmoothing      `json:"delayScaleDown,omitempty"`
 }
 
 // ScalingRule defines how container resources are scaled

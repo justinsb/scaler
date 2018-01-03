@@ -356,8 +356,8 @@ func (in *SmoothingRule) DeepCopyInto(out *SmoothingRule) {
 			**out = **in
 		}
 	}
-	if in.ScaleDownShift != nil {
-		in, out := &in.ScaleDownShift, &out.ScaleDownShift
+	if in.DelayScaleDown != nil {
+		in, out := &in.DelayScaleDown, &out.DelayScaleDown
 		if *in == nil {
 			*out = nil
 		} else {

@@ -17,13 +17,13 @@ func UpdateRule(clock *timeutil.MonotonicClock, s Smoothing, p *api.SmoothingRul
 			return ps
 		}
 		return NewPercentileSmoothing(clock, p.Percentile)
-	} else if p.ScaleDownShift != nil {
+	} else if p.DelayScaleDown != nil {
 		rs, ok := s.(*ResourceShiftSmoothing)
 		if ok {
-			rs.updateRule(p.ScaleDownShift)
+			rs.updateRule(p.DelayScaleDown)
 			return rs
 		}
-		return NewResourceShiftSmoothing(p.ScaleDownShift)
+		return NewResourceShiftSmoothing(p.DelayScaleDown)
 	} else {
 		noop, ok := s.(*NoopSmoothing)
 		if ok {

@@ -21,6 +21,6 @@ spec:
         - at: 50
           roundTo: 10
   smoothing:
-    scaleDownShift:
+    delayScaleDown:
       inputs:
         cores: 20

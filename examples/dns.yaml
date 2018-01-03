@@ -24,6 +24,6 @@ spec:
       - resource: cpu
         base: 100m
   smoothing:
-    scaleDownShift:
+    delayScaleDown:
       inputs:
         cores: 20
