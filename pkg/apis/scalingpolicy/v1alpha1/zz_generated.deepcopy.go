@@ -149,7 +149,7 @@ func (in *ResourceRequirements) DeepCopy() *ResourceRequirements {
 func (in *ResourceScalingRule) DeepCopyInto(out *ResourceScalingRule) {
 	*out = *in
 	out.Base = in.Base.DeepCopy()
-	out.Step = in.Step.DeepCopy()
+	out.Slope = in.Slope.DeepCopy()
 	out.Max = in.Max.DeepCopy()
 	return
 }

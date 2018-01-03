@@ -111,9 +111,9 @@ type ResourceScalingRule struct {
 
 	Resource v1.ResourceName `json:"resource"`
 
-	Base resource.Quantity `json:"base,omitempty"`
-	Step resource.Quantity `json:"step,omitempty"`
-	Max  resource.Quantity `json:"max,omitempty"`
+	Base  resource.Quantity `json:"base,omitempty"`
+	Slope resource.Quantity `json:"slope,omitempty"`
+	Max   resource.Quantity `json:"max,omitempty"`
 }
 
 // ScalingPolicyStatus is the status for an ScalingPolicy resource

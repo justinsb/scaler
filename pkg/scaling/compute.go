@@ -2,6 +2,7 @@ package scaling
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/golang/glog"
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
@@ -93,13 +94,13 @@ func buildResourceRequirements(inputs factors.Snapshot, rules []scalingpolicy.Re
 			if !found {
 				glog.Warningf("value %q not found", rule.Input)
 				// We still continue, we just apply the base value
-			}
+			} else if !rule.Slope.IsZero() {
+				roundedInput := roundInput(rule, input)
 
-			if found && !rule.Step.IsZero() {
-				accumulator.mergeFormat(&rule.Step)
+				accumulator.mergeFormat(&rule.Slope)
 
-				step := float64(rule.Step.ScaledValue(scale)) * input
-				v += int64(step)
+				increment := float64(rule.Slope.ScaledValue(scale)) * roundedInput
+				v += int64(increment)
 			}
 		}
 

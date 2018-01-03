@@ -14,7 +14,7 @@ spec:
       - resource: cpu
         base: 200m
         input: cores
-        step: 250m
+        slope: 250m
     quantization:
     - resource: cpu
       step: 500m
