@@ -5,23 +5,25 @@ metadata:
   namespace: kube-system
 spec:
   scaleTargetRef:
-    kind: deployment
-    name: kubernetes-dashboard
+    kind: Deployment
+    name: kube-dns
   containers:
-  - name: kubernetes-dashboard
+  - name: kubedns
     resources:
       limits:
       - resource: cpu
         base: 200m
         input: cores
-        step: 10m
+        slope: 10m
+        segments:
+        - at: 10
+          roundTo: 5
+        - at: 50
+          roundTo: 10
       requests:
       - resource: cpu
         base: 100m
-    quantization:
-    - resource: cpu
-      step: 16m
   smoothing:
-    scaleDownShift:
+    delayScaleDown:
       inputs:
         cores: 20

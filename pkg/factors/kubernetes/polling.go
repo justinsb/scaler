@@ -3,6 +3,7 @@ package kubernetes
 import (
 	"sync"
 
+	"github.com/golang/glog"
 	"github.com/justinsb/scaler/pkg/control/target"
 	"github.com/justinsb/scaler/pkg/factors"
 	v1 "k8s.io/api/core/v1"
@@ -30,9 +31,14 @@ func NewPollingKubernetesFactors(target target.Interface) factors.Interface {
 }
 
 func (k *pollingKubernetesFactors) Snapshot() (factors.Snapshot, error) {
-	return &pollingKubernetesSnapshot{
+	glog.V(4).Infof("querying kubernetes for cluster metrics")
+	s := &pollingKubernetesSnapshot{
 		target: k.target,
-	}, nil
+	}
+	if err := s.ensureClusterStats(); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func (s *pollingKubernetesSnapshot) Get(key string) (float64, bool, error) {

@@ -5,7 +5,7 @@ metadata:
   namespace: kube-system
 spec:
   scaleTargetRef:
-    kind: deployment
+    kind: Deployment
     name: kubernetes-dashboard
   containers:
   - name: kubernetes-dashboard
@@ -14,12 +14,12 @@ spec:
       - resource: cpu
         base: 200m
         input: cores
-        step: 250m
-    quantization:
-    - resource: cpu
-      step: 500m
-      stepRatio: 2
-      maxStep: 8
+        slope: 250m
+        segments:
+        - at: 10
+          roundTo: 5
+        - at: 50
+          roundTo: 10
   smoothing:
     percentile:
       target: 0.80

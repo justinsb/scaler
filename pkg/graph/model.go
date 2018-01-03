@@ -43,6 +43,9 @@ type Series struct {
 
 	StrokeWidth float32 `json:"strokeWidth,omitempty"`
 	Classed     string  `json:"classed,omitempty"`
+
+	// Area will fill the area under the line
+	Area bool `json:"area,omitempty"`
 }
 
 type Axis struct {

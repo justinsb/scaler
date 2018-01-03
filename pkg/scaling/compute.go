@@ -2,6 +2,7 @@ package scaling
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/golang/glog"
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
@@ -93,13 +94,13 @@ func buildResourceRequirements(inputs factors.Snapshot, rules []scalingpolicy.Re
 			if !found {
 				glog.Warningf("value %q not found", rule.Input)
 				// We still continue, we just apply the base value
-			}
+			} else if !rule.Slope.IsZero() {
+				roundedInput := roundInput(rule, input)
 
-			if found && !rule.Step.IsZero() {
-				accumulator.mergeFormat(&rule.Step)
+				accumulator.mergeFormat(&rule.Slope)
 
-				step := float64(rule.Step.ScaledValue(scale)) * input
-				v += int64(step)
+				increment := float64(rule.Slope.ScaledValue(scale)) * roundedInput
+				v += int64(increment)
 			}
 		}
 
@@ -116,6 +117,30 @@ func buildResourceRequirements(inputs factors.Snapshot, rules []scalingpolicy.Re
 	}
 
 	return resourceList, nil
+}
+
+// findSegment returns the segment of the rule, closest to the input value
+func findSegment(rule *scalingpolicy.ResourceScalingRule, input float64) *scalingpolicy.ResourceScalingSegment {
+	var closest *scalingpolicy.ResourceScalingSegment
+	for i := range rule.Segments {
+		segment := &rule.Segments[i]
+		if segment.At > input {
+			continue
+		}
+		if closest == nil || closest.At < segment.At {
+			closest = segment
+		}
+	}
+	return closest
+}
+
+// roundInput returns the input rounded based on the closest segment
+func roundInput(rule *scalingpolicy.ResourceScalingRule, input float64) float64 {
+	segment := findSegment(rule, input)
+	if segment == nil {
+		return input
+	}
+	return math.Ceil((input/segment.RoundTo)-0.001) * segment.RoundTo
 }
 
 // resourceAccumulator holds the state of a resource.Quantity as we are building it

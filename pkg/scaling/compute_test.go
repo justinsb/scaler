@@ -68,7 +68,7 @@ func TestComputeResources(t *testing.T) {
 									Input:    "pods",
 									Resource: v1.ResourceMemory,
 									Base:     resource.MustParse("100Mi"),
-									Step:     resource.MustParse("10Mi"),
+									Slope:    resource.MustParse("10Mi"),
 								},
 							},
 						},
@@ -103,7 +103,7 @@ func TestComputeResources(t *testing.T) {
 									Input:    "pods",
 									Resource: v1.ResourceMemory,
 									Base:     resource.MustParse("100Mi"),
-									Step:     resource.MustParse("-10Mi"),
+									Slope:    resource.MustParse("-10Mi"),
 								},
 							},
 						},
@@ -138,7 +138,7 @@ func TestComputeResources(t *testing.T) {
 									Input:    "pods",
 									Resource: v1.ResourceMemory,
 									Base:     resource.MustParse("10Mi"),
-									Step:     resource.MustParse("1M"),
+									Slope:    resource.MustParse("1M"),
 								},
 							},
 						},
@@ -174,12 +174,12 @@ func TestComputeResources(t *testing.T) {
 									Input:    "pods",
 									Resource: v1.ResourceMemory,
 									Base:     resource.MustParse("100Mi"),
-									Step:     resource.MustParse("10Mi"),
+									Slope:    resource.MustParse("10Mi"),
 								},
 								{
 									Input:    "nodes",
 									Resource: v1.ResourceMemory,
-									Step:     resource.MustParse("20Mi"),
+									Slope:    resource.MustParse("20Mi"),
 								},
 							},
 						},
@@ -215,13 +215,13 @@ func TestComputeResources(t *testing.T) {
 									Input:    "pods",
 									Resource: v1.ResourceMemory,
 									Base:     resource.MustParse("200Mi"),
-									Step:     resource.MustParse("7Mi"),
+									Slope:    resource.MustParse("7Mi"),
 								},
 								{
 									Input:    "nodes",
 									Resource: v1.ResourceCPU,
 									Base:     resource.MustParse("100m"),
-									Step:     resource.MustParse("23m"),
+									Slope:    resource.MustParse("23m"),
 								},
 							},
 						},
@@ -236,6 +236,57 @@ func TestComputeResources(t *testing.T) {
 							Requests: v1.ResourceList{
 								v1.ResourceMemory: resource.MustParse("228Mi"),
 								v1.ResourceCPU:    resource.MustParse("146m"),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "Segments",
+			Inputs: map[string]float64{
+				"nodes": 19, // rounds up to 20
+				"pods":  26, // rounds up to 30
+			},
+			Policy: &scalingpolicy.ScalingPolicySpec{
+				Containers: []scalingpolicy.ContainerScalingRule{
+					{
+						Name: "container1",
+						Resources: scalingpolicy.ResourceRequirements{
+							Requests: []scalingpolicy.ResourceScalingRule{
+								{
+									Input:    "pods",
+									Resource: v1.ResourceMemory,
+									Base:     resource.MustParse("200Mi"),
+									Slope:    resource.MustParse("7Mi"),
+									Segments: []scalingpolicy.ResourceScalingSegment{
+										{At: 6, RoundTo: 2},
+										{At: 20, RoundTo: 5},
+									},
+								},
+								{
+									Input:    "nodes",
+									Resource: v1.ResourceCPU,
+									Base:     resource.MustParse("100m"),
+									Slope:    resource.MustParse("23m"),
+									Segments: []scalingpolicy.ResourceScalingSegment{
+										{At: 10, RoundTo: 5},
+										{At: 20, RoundTo: 10},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Expected: &v1.PodSpec{
+				Containers: []v1.Container{
+					{
+						Name: "container1",
+						Resources: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceMemory: resource.MustParse("410Mi"), // 200Mi + (30 * 7Mi)
+								v1.ResourceCPU:    resource.MustParse("560m"),  // 100m + (20 * 23m)
 							},
 						},
 					},
@@ -257,6 +308,42 @@ func TestComputeResources(t *testing.T) {
 		}
 		if !equality.Semantic.DeepEqual(actual, g.Expected) {
 			t.Errorf("test failure\nname=%s\npolicy=%v\n  actual=%v\nexpected=%v", g.Name, debug.Print(g.Policy), debug.Print(actual), debug.Print(g.Expected))
+			continue
+		}
+	}
+}
+
+func TestSegments(t *testing.T) {
+	rule := &scalingpolicy.ResourceScalingRule{
+		Segments: []scalingpolicy.ResourceScalingSegment{
+			{At: 10, RoundTo: 5},
+			{At: 20, RoundTo: 10},
+		},
+	}
+
+	grid := []struct {
+		Input    float64
+		Expected float64
+	}{
+		{Input: 1, Expected: 1},
+		{Input: 2, Expected: 2},
+		{Input: 9, Expected: 9},
+		{Input: 10, Expected: 10},
+		{Input: 11, Expected: 15},
+		{Input: 12, Expected: 15},
+		{Input: 15, Expected: 15},
+		{Input: 16, Expected: 20},
+		{Input: 19, Expected: 20},
+		{Input: 20, Expected: 20},
+		{Input: 21, Expected: 30},
+		{Input: 30, Expected: 30},
+		{Input: 31, Expected: 40},
+	}
+
+	for _, g := range grid {
+		actual := roundInput(rule, g.Input)
+		if actual != g.Expected {
+			t.Errorf("test failure\rule=%s\n  actual=%v\nexpected=%v", debug.Print(rule), actual, g.Expected)
 			continue
 		}
 	}

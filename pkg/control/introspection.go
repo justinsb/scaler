@@ -70,8 +70,8 @@ func (s *PolicyState) buildGraph(factor string) (*graph.Model, error) {
 
 		graph.AddPodDataPoints(g, "", float64(x), podSpec, &graph.Series{})
 
-		if s.policy.Spec.Smoothing.ScaleDownShift != nil {
-			scaleDownPodSpec, err := scaling.ComputeResourcesShifted(snapshot, &s.policy.Spec, s.policy.Spec.Smoothing.ScaleDownShift)
+		if s.policy.Spec.Smoothing.DelayScaleDown != nil {
+			scaleDownPodSpec, err := scaling.ComputeResourcesShifted(snapshot, &s.policy.Spec, s.policy.Spec.Smoothing.DelayScaleDown)
 			if err != nil {
 				glog.Warningf("error computing shifted resources: %v", err)
 				continue

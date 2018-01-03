@@ -25,8 +25,8 @@ go_test(
         "compute_test.go",
         "quantization_test.go",
     ],
+    embed = [":go_default_library"],
     importpath = "github.com/justinsb/scaler/pkg/scaling",
-    library = ":go_default_library",
     deps = [
         "//pkg/apis/scalingpolicy/v1alpha1:go_default_library",
         "//pkg/debug:go_default_library",

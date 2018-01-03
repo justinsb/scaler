@@ -9,3 +9,87 @@ spec:
     kind: ScalingPolicy
     plural: scalingpolicies
   scope: Namespaced
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: scaler
+  namespace: kube-system
+  labels:
+    k8s-addon: scaler
+spec:
+  template:
+    metadata:
+      labels:
+        name: scaler
+        k8s-addon: scaler
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      containers:
+      - resources:
+          requests:
+            cpu: 50m
+            memory: 100Mi
+          limits:
+            memory: 100Mi
+        command:
+        - /scaler
+        - --v=4
+        - --listen-api=:8080
+        image: justinsb/scaler:latest
+        name: scaler
+      serviceAccountName: scaler
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: CriticalAddonsOnly
+        operator: Exists
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scaler
+  namespace: kube-system
+  labels:
+    k8s-addon: scaler
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  labels:
+    k8s-addon: scaler
+  name: scaler
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    k8s-addon: scaler
+  name: scaler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scaler
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:serviceaccount:kube-system:scaler
