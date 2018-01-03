@@ -15,9 +15,11 @@ spec:
         base: 200m
         input: cores
         slope: 250m
-    quantization:
-    - resource: cpu
-      step: 500m
+        segments:
+        - at: 10
+          roundTo: 5
+        - at: 50
+          roundTo: 10
   smoothing:
     scaleDownShift:
       inputs:
