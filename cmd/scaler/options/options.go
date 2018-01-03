@@ -59,7 +59,7 @@ func (c *AutoScalerConfig) AddFlags(fs *pflag.FlagSet) {
 	//fs.StringVar(&c.DefaultConfig, "default-config", c.DefaultConfig, "The default configuration (in JSON format).")
 	//fs.StringVar(&c.ConfigFile, "config-file", c.ConfigFile, "A config file (in JSON format), which overrides the --default-config.")
 	fs.DurationVar(&c.PollPeriod, "poll-period", c.PollPeriod, "The period to poll cluster state.")
-	fs.DurationVar(&c.UpdatePeriod, "update-period", c.PollPeriod, "The period with which we consider applying resource changes.")
+	fs.DurationVar(&c.UpdatePeriod, "update-period", c.UpdatePeriod, "The period with which we consider applying resource changes.")
 	fs.StringVar(&c.Kubeconfig, "kubeconfig", c.Kubeconfig, "Path to a kubeconfig. Only required if running out-of-cluster.")
 	fs.BoolVar(&c.PrintVersion, "version", c.PrintVersion, "Print the version and exit.")
 	fs.BoolVar(&c.DryRun, "dry-run", c.DryRun, "Calculate updates for a target but does not apply the update.")
@@ -75,10 +75,12 @@ func (c *AutoScalerConfig) AddFlags(fs *pflag.FlagSet) {
 //}
 
 func (c *AutoScalerConfig) InitFlags() {
+	goflag.Set("logtostderr", "true")
+	goflag.CommandLine.Parse([]string{}) // Hack to stop noisy logs.
+
 	//pflag.CommandLine.SetNormalizeFunc(WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	pflag.Parse()
-	goflag.CommandLine.Parse([]string{}) // Hack to stop noisy logs.
 }
 
 // ValidateFlags validates whether flags are set up correctly

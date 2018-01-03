@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/justinsb/scaler/pkg/control/k8sclient"
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,6 +96,8 @@ func (s *KubernetesTarget) ReadClusterState() (*ClusterStats, error) {
 		stats.NodeCount++
 		addResourceList(stats.NodeSumAllocatable, node.Status.Allocatable)
 	}
+
+	glog.V(4).Infof("kubernetes cluster state: %v", stats)
 
 	return stats, nil
 }

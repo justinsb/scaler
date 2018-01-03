@@ -22,6 +22,7 @@ package k8sclient
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
@@ -79,12 +80,12 @@ type patchFunc func(client kubernetes.Interface, namespace, name string, pt type
 // use whatever is "latest".  The fallout of this is that we will need to update
 // this program when new API group-versions are introduced.
 func (k *kubernetesPatcher) findPatcher(kind string) (schema.GroupVersion, patchFunc, error) {
-	switch kind {
-	case KindDeployment:
+	switch strings.ToLower(kind) {
+	case "deployment":
 		return findDeploymentPatcher(k.groupVersions)
-	case KindDaemonSet:
+	case "daemonset":
 		return findDaemonSetPatcher(k.groupVersions)
-	case KindReplicaSet:
+	case "replicaset":
 		return findReplicaSetPatcher(k.groupVersions)
 	}
 	return schema.GroupVersion{}, nil, fmt.Errorf("unknown target kind: %s", kind)
@@ -174,8 +175,8 @@ func (k *kubernetesPatcher) UpdateResources(kind, namespace, name string, update
 
 	spec := make(map[string]interface{})
 
-	switch kind {
-	case KindReplicaSet, KindDeployment, KindDaemonSet:
+	switch strings.ToLower(kind) {
+	case "replicaset", "deployment", "daemonset":
 		spec["template"] = map[string]interface{}{
 			"spec": podSpec,
 		}
