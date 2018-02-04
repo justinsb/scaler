@@ -5,5 +5,8 @@ go_library(
     srcs = ["factors.go"],
     importpath = "github.com/justinsb/scaler/pkg/factors/static",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/factors:go_default_library"],
+    deps = [
+        "//pkg/factors:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/clock:go_default_library",
+    ],
 )

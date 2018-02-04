@@ -1,12 +1,9 @@
 package control
 
 import (
-	"github.com/golang/glog"
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
-	staticfactors "github.com/justinsb/scaler/pkg/factors/static"
 	"github.com/justinsb/scaler/pkg/graph"
 	"github.com/justinsb/scaler/pkg/http"
-	"github.com/justinsb/scaler/pkg/scaling"
 	"github.com/justinsb/scaler/pkg/simulate"
 )
 
@@ -23,13 +20,15 @@ func (s *PolicyState) ListGraphs() ([]*graph.Metadata, error) {
 	inputs := make(map[string]bool)
 	for _, c := range s.policy.Spec.Containers {
 		for _, r := range c.Resources.Limits {
-			if r.Input != "" {
-				inputs[r.Input] = true
+			fn := r.Function
+			if fn.Input != "" {
+				inputs[fn.Input] = true
 			}
 		}
 		for _, r := range c.Resources.Requests {
-			if r.Input != "" {
-				inputs[r.Input] = true
+			fn := r.Function
+			if fn.Input != "" {
+				inputs[fn.Input] = true
 			}
 		}
 	}
@@ -49,36 +48,38 @@ func (s *PolicyState) ListGraphs() ([]*graph.Metadata, error) {
 func (s *PolicyState) buildGraph(factor string) (*graph.Model, error) {
 	g := &graph.Model{}
 	for x := 1; x < 100; x++ {
-		factors := make(map[string]float64)
-		factors[factor] = float64(x)
-
-		g.XAxis.Label = factor
-
-		static := staticfactors.NewStaticFactors(factors)
-		snapshot, err := static.Snapshot()
-		if err != nil {
-			// Shouldn't happen...
-			glog.Warningf("error taking snapshot of static factors: %v", err)
-			continue
-		}
-
-		podSpec, err := scaling.ComputeResources(snapshot, &s.policy.Spec)
-		if err != nil {
-			glog.Warningf("error computing resources: %v", err)
-			continue
-		}
-
-		graph.AddPodDataPoints(g, "", float64(x), podSpec, &graph.Series{})
-
-		if s.policy.Spec.Smoothing.DelayScaleDown != nil {
-			scaleDownPodSpec, err := scaling.ComputeResourcesShifted(snapshot, &s.policy.Spec, s.policy.Spec.Smoothing.DelayScaleDown)
-			if err != nil {
-				glog.Warningf("error computing shifted resources: %v", err)
-				continue
-			}
-
-			graph.AddPodDataPoints(g, "scaledown_", float64(x), scaleDownPodSpec, &graph.Series{})
-		}
+		//factors := make(map[string]float64)
+		//factors[factor] = float64(x)
+		//
+		//g.XAxis.Label = factor
+		//
+		//baseTime := time.Now()
+		//clock := clock.NewFakeClock(baseTime)
+		//static := staticfactors.NewStaticFactors(clock, factors)
+		//snapshot, err := static.Snapshot()
+		//if err != nil {
+		//	// Shouldn't happen...
+		//	glog.Warningf("error taking snapshot of static factors: %v", err)
+		//	continue
+		//}
+		//
+		//podSpec, err := scaling.ComputeChanges(snapshot, &s.policy.Spec)
+		//if err != nil {
+		//	glog.Warningf("error computing resources: %v", err)
+		//	continue
+		//}
+		//
+		//graph.AddPodDataPoints(g, "", float64(x), podSpec, &graph.Series{})
+		//
+		//if s.policy.Spec.Smoothing.DelayScaleDown != nil {
+		//	scaleDownPodSpec, err := scaling.ComputeResourcesShifted(snapshot, &s.policy.Spec, s.policy.Spec.Smoothing.DelayScaleDown)
+		//	if err != nil {
+		//		glog.Warningf("error computing shifted resources: %v", err)
+		//		continue
+		//	}
+		//
+		//	graph.AddPodDataPoints(g, "scaledown_", float64(x), scaleDownPodSpec, &graph.Series{})
+		//}
 	}
 
 	return g, nil
@@ -90,7 +91,7 @@ func (s *PolicyState) Query() *PolicyInfo {
 
 	info := &PolicyInfo{
 		Policy: s.policy,
-		State:  s.smoothing.Query(),
+		//State:  s.evaluator.Query(),
 	}
 	return info
 }

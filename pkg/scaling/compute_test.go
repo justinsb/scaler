@@ -3,12 +3,15 @@ package scaling
 import (
 	"testing"
 
+	"time"
+
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
 	"github.com/justinsb/scaler/pkg/debug"
 	"github.com/justinsb/scaler/pkg/factors/static"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/clock"
 )
 
 func TestComputeResources(t *testing.T) {
@@ -21,7 +24,7 @@ func TestComputeResources(t *testing.T) {
 		{
 			Name:     "Empty policy",
 			Policy:   &scalingpolicy.ScalingPolicySpec{},
-			Expected: &v1.PodSpec{},
+			Expected: nil,
 		},
 		{
 			Name: "Trivial no-scale policy",
@@ -33,7 +36,9 @@ func TestComputeResources(t *testing.T) {
 							Limits: []scalingpolicy.ResourceScalingRule{
 								{
 									Resource: v1.ResourceCPU,
-									Base:     resource.MustParse("2000m"),
+									Function: scalingpolicy.ResourceScalingFunction{
+										Base: resource.MustParse("2000m"),
+									},
 								},
 							},
 						},
@@ -65,10 +70,12 @@ func TestComputeResources(t *testing.T) {
 						Resources: scalingpolicy.ResourceRequirements{
 							Requests: []scalingpolicy.ResourceScalingRule{
 								{
-									Input:    "pods",
 									Resource: v1.ResourceMemory,
-									Base:     resource.MustParse("100Mi"),
-									Slope:    resource.MustParse("10Mi"),
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "pods",
+										Base:  resource.MustParse("100Mi"),
+										Slope: resource.MustParse("10Mi"),
+									},
 								},
 							},
 						},
@@ -100,10 +107,12 @@ func TestComputeResources(t *testing.T) {
 						Resources: scalingpolicy.ResourceRequirements{
 							Requests: []scalingpolicy.ResourceScalingRule{
 								{
-									Input:    "pods",
 									Resource: v1.ResourceMemory,
-									Base:     resource.MustParse("100Mi"),
-									Slope:    resource.MustParse("-10Mi"),
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "pods",
+										Base:  resource.MustParse("100Mi"),
+										Slope: resource.MustParse("-10Mi"),
+									},
 								},
 							},
 						},
@@ -135,10 +144,12 @@ func TestComputeResources(t *testing.T) {
 						Resources: scalingpolicy.ResourceRequirements{
 							Requests: []scalingpolicy.ResourceScalingRule{
 								{
-									Input:    "pods",
 									Resource: v1.ResourceMemory,
-									Base:     resource.MustParse("10Mi"),
-									Slope:    resource.MustParse("1M"),
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "pods",
+										Base:  resource.MustParse("10Mi"),
+										Slope: resource.MustParse("1M"),
+									},
 								},
 							},
 						},
@@ -158,7 +169,7 @@ func TestComputeResources(t *testing.T) {
 				},
 			},
 		},
-		{
+		/*{
 			Name: "Multiple rules on same resource",
 			Inputs: map[string]float64{
 				"nodes": 2,
@@ -171,15 +182,19 @@ func TestComputeResources(t *testing.T) {
 						Resources: scalingpolicy.ResourceRequirements{
 							Requests: []scalingpolicy.ResourceScalingRule{
 								{
-									Input:    "pods",
 									Resource: v1.ResourceMemory,
-									Base:     resource.MustParse("100Mi"),
-									Slope:    resource.MustParse("10Mi"),
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "pods",
+										Base:  resource.MustParse("100Mi"),
+										Slope: resource.MustParse("10Mi"),
+									},
 								},
 								{
-									Input:    "nodes",
 									Resource: v1.ResourceMemory,
-									Slope:    resource.MustParse("20Mi"),
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "nodes",
+										Slope: resource.MustParse("20Mi"),
+									},
 								},
 							},
 						},
@@ -199,6 +214,7 @@ func TestComputeResources(t *testing.T) {
 				},
 			},
 		},
+		*/
 		{
 			Name: "Multiple resources",
 			Inputs: map[string]float64{
@@ -212,16 +228,20 @@ func TestComputeResources(t *testing.T) {
 						Resources: scalingpolicy.ResourceRequirements{
 							Requests: []scalingpolicy.ResourceScalingRule{
 								{
-									Input:    "pods",
 									Resource: v1.ResourceMemory,
-									Base:     resource.MustParse("200Mi"),
-									Slope:    resource.MustParse("7Mi"),
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "pods",
+										Base:  resource.MustParse("200Mi"),
+										Slope: resource.MustParse("7Mi"),
+									},
 								},
 								{
-									Input:    "nodes",
 									Resource: v1.ResourceCPU,
-									Base:     resource.MustParse("100m"),
-									Slope:    resource.MustParse("23m"),
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "nodes",
+										Base:  resource.MustParse("100m"),
+										Slope: resource.MustParse("23m"),
+									},
 								},
 							},
 						},
@@ -255,23 +275,27 @@ func TestComputeResources(t *testing.T) {
 						Resources: scalingpolicy.ResourceRequirements{
 							Requests: []scalingpolicy.ResourceScalingRule{
 								{
-									Input:    "pods",
 									Resource: v1.ResourceMemory,
-									Base:     resource.MustParse("200Mi"),
-									Slope:    resource.MustParse("7Mi"),
-									Segments: []scalingpolicy.ResourceScalingSegment{
-										{At: 6, RoundTo: 2},
-										{At: 20, RoundTo: 5},
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "pods",
+										Base:  resource.MustParse("200Mi"),
+										Slope: resource.MustParse("7Mi"),
+										Segments: []scalingpolicy.ResourceScalingSegment{
+											{At: 6, Every: 2},
+											{At: 20, Every: 5},
+										},
 									},
 								},
 								{
-									Input:    "nodes",
 									Resource: v1.ResourceCPU,
-									Base:     resource.MustParse("100m"),
-									Slope:    resource.MustParse("23m"),
-									Segments: []scalingpolicy.ResourceScalingSegment{
-										{At: 10, RoundTo: 5},
-										{At: 20, RoundTo: 10},
+									Function: scalingpolicy.ResourceScalingFunction{
+										Input: "nodes",
+										Base:  resource.MustParse("100m"),
+										Slope: resource.MustParse("23m"),
+										Segments: []scalingpolicy.ResourceScalingSegment{
+											{At: 10, Every: 5},
+											{At: 20, Every: 10},
+										},
 									},
 								},
 							},
@@ -296,28 +320,39 @@ func TestComputeResources(t *testing.T) {
 	}
 
 	for _, g := range grid {
-		factors := static.NewStaticFactors(g.Inputs)
+		baseTime := time.Now()
+		clock := clock.NewFakeClock(baseTime)
+		factors := static.NewStaticFactors(clock, g.Inputs)
 		snaphot, err := factors.Snapshot()
 		if err != nil {
 			t.Errorf("snapshot failed: %v", err)
 		}
-		actual, err := ComputeResources(snaphot, g.Policy)
+		policy := &scalingpolicy.ScalingPolicy{
+			Spec: *g.Policy,
+		}
+		actual := &v1.PodSpec{}
+		for _, c := range g.Policy.Containers {
+			actual.Containers = append(actual.Containers, v1.Container{Name: c.Name})
+		}
+		evaluator := NewScalingPolicyEvaluator(clock, policy)
+		evaluator.AddObservation(snaphot)
+		changes, err := evaluator.ComputeResources("", actual)
 		if err != nil {
 			t.Errorf("unexpected error from test\npolicy=%v\nerror=%v", debug.Print(g.Policy), err)
 			continue
 		}
-		if !equality.Semantic.DeepEqual(actual, g.Expected) {
-			t.Errorf("test failure\nname=%s\npolicy=%v\n  actual=%v\nexpected=%v", g.Name, debug.Print(g.Policy), debug.Print(actual), debug.Print(g.Expected))
+		if !equality.Semantic.DeepEqual(changes, g.Expected) {
+			t.Errorf("test failure\nname=%s\npolicy=%v\n  actual=%v\nexpected=%v", g.Name, debug.Print(g.Policy), debug.Print(changes), debug.Print(g.Expected))
 			continue
 		}
 	}
 }
 
 func TestSegments(t *testing.T) {
-	rule := &scalingpolicy.ResourceScalingRule{
+	fn := &scalingpolicy.ResourceScalingFunction{
 		Segments: []scalingpolicy.ResourceScalingSegment{
-			{At: 10, RoundTo: 5},
-			{At: 20, RoundTo: 10},
+			{At: 10, Every: 5},
+			{At: 20, Every: 10},
 		},
 	}
 
@@ -341,9 +376,9 @@ func TestSegments(t *testing.T) {
 	}
 
 	for _, g := range grid {
-		actual := roundInput(rule, g.Input)
+		actual := roundInput(fn, g.Input)
 		if actual != g.Expected {
-			t.Errorf("test failure\rule=%s\n  actual=%v\nexpected=%v", debug.Print(rule), actual, g.Expected)
+			t.Errorf("test failure\fn=%s\n  actual=%v\nexpected=%v", debug.Print(fn), actual, g.Expected)
 			continue
 		}
 	}

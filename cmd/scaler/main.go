@@ -31,6 +31,7 @@ import (
 	"github.com/justinsb/scaler/pkg/signals"
 	"github.com/justinsb/scaler/pkg/version"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/util/clock"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -98,7 +99,7 @@ func run(config *options.AutoScalerConfig) error {
 		return err
 	}
 
-	state, err := control.NewState(t, config)
+	state, err := control.NewState(&clock.RealClock{}, t, config)
 	if err != nil {
 		return fmt.Errorf("error initializing: %v", err)
 	}
