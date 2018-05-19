@@ -2,10 +2,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "interfaces.go",
-        "shifted.go",
-    ],
+    srcs = ["interfaces.go"],
     importpath = "github.com/justinsb/scaler/pkg/factors",
     visibility = ["//visibility:public"],
 )

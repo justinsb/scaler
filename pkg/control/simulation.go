@@ -10,7 +10,6 @@ import (
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
 	"github.com/justinsb/scaler/pkg/control/target"
 	"github.com/justinsb/scaler/pkg/simulate"
-	"github.com/justinsb/scaler/pkg/timeutil"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/clock"
@@ -24,13 +23,12 @@ func RunSimulation(policy *scalingpolicy.ScalingPolicy, options *options.AutoSca
 
 	universe.Current = buildMockPodSpec(policy)
 
-	state, err := NewState(universe, options)
+	baseTime := time.Now()
+	fakeClock := clock.NewFakeClock(baseTime)
+	state, err := NewState(fakeClock, universe, options)
 	if err != nil {
 		return nil, err
 	}
-	baseTime := time.Now()
-	fakeClock := clock.NewFakeClock(baseTime)
-	state.clock = timeutil.NewMonotonicClock(fakeClock)
 
 	policy = policy.DeepCopy()
 	state.upsert(policy)
@@ -50,13 +48,13 @@ func RunSimulation(policy *scalingpolicy.ScalingPolicy, options *options.AutoSca
 		fakeClock.SetTime(timeNow)
 
 		if (t % pollPeriod) == 0 {
-			if err := state.computeTargetValues(); err != nil {
+			if err := state.makeObservation(); err != nil {
 				errors = append(errors, err)
 			}
 		}
 
 		if (t % updatePeriod) == 0 {
-			if err := state.updateValues(); err != nil {
+			if err := state.applyPolicies(); err != nil {
 				errors = append(errors, err)
 			}
 		}

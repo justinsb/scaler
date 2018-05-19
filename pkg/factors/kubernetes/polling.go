@@ -3,30 +3,37 @@ package kubernetes
 import (
 	"sync"
 
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/justinsb/scaler/pkg/control/target"
 	"github.com/justinsb/scaler/pkg/factors"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/clock"
 )
 
 type pollingKubernetesFactors struct {
 	target target.Interface
+	clock  clock.Clock
 }
 
 var _ factors.Interface = &pollingKubernetesFactors{}
 
 type pollingKubernetesSnapshot struct {
 	target target.Interface
+	clock  clock.Clock
 
-	mutex sync.Mutex
-	stats *target.ClusterStats
+	mutex     sync.Mutex
+	stats     *target.ClusterStats
+	timestamp time.Time
 }
 
 var _ factors.Snapshot = &pollingKubernetesSnapshot{}
 
-func NewPollingKubernetesFactors(target target.Interface) factors.Interface {
+func NewPollingKubernetesFactors(clock clock.Clock, target target.Interface) factors.Interface {
 	return &pollingKubernetesFactors{
 		target: target,
+		clock:  clock,
 	}
 }
 
@@ -34,11 +41,16 @@ func (k *pollingKubernetesFactors) Snapshot() (factors.Snapshot, error) {
 	glog.V(4).Infof("querying kubernetes for cluster metrics")
 	s := &pollingKubernetesSnapshot{
 		target: k.target,
+		clock:  k.clock,
 	}
 	if err := s.ensureClusterStats(); err != nil {
 		return nil, err
 	}
 	return s, nil
+}
+
+func (s *pollingKubernetesSnapshot) Timestamp() time.Time {
+	return s.timestamp
 }
 
 func (s *pollingKubernetesSnapshot) Get(key string) (float64, bool, error) {
@@ -98,5 +110,7 @@ func (s *pollingKubernetesSnapshot) ensureClusterStats() error {
 		return err
 	}
 	s.stats = stats
+	s.timestamp = s.clock.Now()
+
 	return nil
 }

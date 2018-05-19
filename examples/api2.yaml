@@ -1,0 +1,33 @@
+apiVersion: scalingpolicy.kope.io/v1alpha1
+kind: ScalingPolicy
+metadata:
+  name: kube-dns
+  namespace: kube-system
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    name: kube-dns
+  containers:
+  - name: kubedns
+    resources:
+      limits:
+      - resource: cpu
+        max: 4000m
+        function:
+        - base: 200m
+          input: cores
+          slope: 1m
+          per: 2 # cores (proposed)
+          segments:
+          - at: 10
+            roundTo: 5
+          - at: 50
+            roundTo: 10
+          delayScaleDown:
+            inputs:
+              max: 20 # cores => 10m
+              delaySeconds: 300
+      requests:
+      - resource: cpu
+        function:
+        - base: 100m

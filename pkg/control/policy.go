@@ -9,7 +9,7 @@ import (
 	scalingpolicy "github.com/justinsb/scaler/pkg/apis/scalingpolicy/v1alpha1"
 	"github.com/justinsb/scaler/pkg/control/target"
 	"github.com/justinsb/scaler/pkg/factors"
-	"github.com/justinsb/scaler/pkg/scaling/smoothing"
+	"github.com/justinsb/scaler/pkg/scaling"
 )
 
 // PolicyState is the state around a single scaling policy
@@ -17,10 +17,11 @@ type PolicyState struct {
 	target  target.Interface
 	options *options.AutoScalerConfig
 
-	mutex     sync.Mutex
-	parent    *State
-	policy    *scalingpolicy.ScalingPolicy
-	smoothing smoothing.Smoothing
+	mutex  sync.Mutex
+	parent *State
+	policy *scalingpolicy.ScalingPolicy
+
+	evaluator *scaling.ScalingPolicyEvaluator
 }
 
 func NewPolicyState(parent *State, policy *scalingpolicy.ScalingPolicy) *PolicyState {
@@ -31,7 +32,7 @@ func NewPolicyState(parent *State, policy *scalingpolicy.ScalingPolicy) *PolicyS
 		policy:  policy,
 	}
 
-	s.smoothing = smoothing.New(parent.clock, &policy.Spec.Smoothing)
+	s.evaluator = scaling.NewScalingPolicyEvaluator(parent.clock, policy)
 
 	return s
 }
@@ -41,10 +42,11 @@ func (s *PolicyState) updatePolicy(o *scalingpolicy.ScalingPolicy) {
 	defer s.mutex.Unlock()
 
 	s.policy = o
-	s.smoothing = smoothing.UpdateRule(s.parent.clock, s.smoothing, &s.policy.Spec.Smoothing)
+	s.evaluator.UpdatePolicy(o)
 }
 
-func (s *PolicyState) computeTargetValues(snapshot factors.Snapshot) error {
+// addObservation is called whenever we observe a set of input values
+func (s *PolicyState) addObservation(snapshot factors.Snapshot) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -56,9 +58,9 @@ func (s *PolicyState) computeTargetValues(snapshot factors.Snapshot) error {
 
 	path := fmt.Sprintf("%s/%s/%s", kind, namespace, name)
 
-	glog.V(4).Infof("computing target values for %s", path)
+	glog.V(4).Infof("adding observation for %s", path)
 
-	return s.smoothing.UpdateTarget(snapshot, &s.policy.Spec)
+	s.evaluator.AddObservation(snapshot)
 }
 
 func (s *PolicyState) updateValues() error {
@@ -73,16 +75,19 @@ func (s *PolicyState) updateValues() error {
 
 	path := fmt.Sprintf("%s/%s/%s", kind, namespace, name)
 
-	spec, err := s.target.Read(kind, namespace, name)
+	actual, err := s.target.Read(kind, namespace, name)
 	if err != nil {
 		// TODO: Emit event?
 		return err
 	}
 
-	changed, updates := s.smoothing.ComputeChange(path, spec)
+	changes, err := s.evaluator.ComputeResources(path, actual)
+	if err != nil {
+		return err
+	}
 
-	if changed {
-		if err := s.target.UpdateResources(kind, namespace, name, updates, s.options.DryRun); err != nil {
+	if changes != nil {
+		if err := s.target.UpdateResources(kind, namespace, name, changes, s.options.DryRun); err != nil {
 			glog.Warningf("failed to update %q: %v", kind, err)
 		} else {
 			glog.V(4).Infof("applied update to %s", path)

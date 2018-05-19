@@ -16,6 +16,7 @@ go_library(
         "//pkg/version:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/github.com/spf13/pflag:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/clock:go_default_library",
         "//vendor/k8s.io/client-go/informers:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/client-go/rest:go_default_library",

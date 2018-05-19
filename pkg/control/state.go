@@ -9,7 +9,6 @@ import (
 	"github.com/justinsb/scaler/pkg/control/target"
 	"github.com/justinsb/scaler/pkg/factors"
 	k8sfactors "github.com/justinsb/scaler/pkg/factors/kubernetes"
-	"github.com/justinsb/scaler/pkg/timeutil"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -17,7 +16,7 @@ import (
 
 // State holds the current parent and state around applying them
 type State struct {
-	clock   *timeutil.MonotonicClock
+	clock   clock.Clock
 	target  target.Interface
 	options *options.AutoScalerConfig
 	factors factors.Interface
@@ -26,33 +25,33 @@ type State struct {
 	policies map[types.NamespacedName]*PolicyState
 }
 
-func NewState(target target.Interface, options *options.AutoScalerConfig) (*State, error) {
+func NewState(clock clock.Clock, target target.Interface, options *options.AutoScalerConfig) (*State, error) {
 	p := &State{
-		clock:    timeutil.NewMonotonicClock(&clock.RealClock{}),
+		clock:    clock,
 		target:   target,
 		options:  options,
 		policies: make(map[types.NamespacedName]*PolicyState),
 	}
 
-	p.factors = k8sfactors.NewPollingKubernetesFactors(target)
+	p.factors = k8sfactors.NewPollingKubernetesFactors(clock, target)
 
 	return p, nil
 }
 
 func (c *State) Run(stopCh <-chan struct{}) {
 	go wait.Until(func() {
-		err := c.computeTargetValues()
+		err := c.makeObservation()
 		if err != nil {
 			// TODO: Report as event
-			glog.Warningf("error computing target values: %v", err)
+			glog.Warningf("error observing cluster values: %v", err)
 		}
 	}, c.options.PollPeriod, stopCh)
 
 	go wait.Until(func() {
-		err := c.updateValues()
+		err := c.applyPolicies()
 		if err != nil {
 			// TODO: Report as event
-			glog.Warningf("error computing target values: %v", err)
+			glog.Warningf("error applying policy values: %v", err)
 		}
 	}, c.options.UpdatePeriod, stopCh)
 }
@@ -84,7 +83,7 @@ func (c *State) upsert(o *scalingpolicy.ScalingPolicy) {
 	}
 }
 
-func (c *State) computeTargetValues() error {
+func (c *State) makeObservation() error {
 	snapshot, err := c.factors.Snapshot()
 	if err != nil {
 		return err
@@ -93,17 +92,14 @@ func (c *State) computeTargetValues() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	for k, p := range c.policies {
-		if err := p.computeTargetValues(snapshot); err != nil {
-			glog.Warningf("error computing target values for %s: %v", k, err)
-			continue
-		}
+	for _, p := range c.policies {
+		p.addObservation(snapshot)
 	}
 
 	return nil
 }
 
-func (c *State) updateValues() error {
+func (c *State) applyPolicies() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
