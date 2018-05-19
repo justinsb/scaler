@@ -43,7 +43,7 @@ type kubernetesPatcher struct {
 var _ ResourcePatcher = &kubernetesPatcher{}
 
 func NewKubernetesPatcher(client kubernetes.Interface) (ResourcePatcher, error) {
-	resourceLists, err := client.Discovery().ServerPreferredNamespacedResources()
+	resourceLists, err := client.Discovery().ServerResources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query server preferred namespaced resources: %v", err)
 	}
