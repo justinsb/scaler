@@ -27,8 +27,8 @@ test:
 	bazel test //cmd/... //pkg/...
 
 .PHONY: push
-push: images
-	docker push ${DOCKER_REGISTRY}/scaler:${DOCKER_TAG}
+push:
+	bazel run //images:push-scaler
 
 .PHONY: images
 images:
