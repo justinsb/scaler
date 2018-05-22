@@ -13,13 +13,11 @@ To compute the resources for a target:
 * ScalingPolicies explicitly transform those inputs into an "optimum" value for resource requests & limits
   for daemonsets / deployments / replicasets.  For example, cpu might be modelled as `200m + (cores * 10m)`.
   We don't support expressions via a DSL, but rather via fields in the API (e.g. `base: 200m`, `input: cores`, `slope: 10m`).
-* When we must restart the target pods when we change the resources, so we try to avoid scaling them for every input change.
-  We would like to avoid oscillations (for example during a rolling-update) resulting in
-  rapid-rescaling the targeted resources.
-* The first way we avoid rapid-rescaling is by defining `segments`; which round the input value up to a multiple
+* We must restart the target pods when we change the resources, so we try to avoid scaling them for every input change.
+* The first way we avoid rapid-rescaling is by defining `segments`.  Segments round the input value up to a multiple
   of an interval called `every`.  Each segment applies to a different range of input values, and this lets
-  us express the idea that at small scale we care about every core, but at larger scale we probably value
-  avoiding restarts more than having the optimal value.
+  us express the common idea that at small scale we care about every core, but at larger scale we probably value
+  avoiding restarts more than having the exact optimal value.
 * The second way we avoid rapid-rescaling is that we delay scaling down - either by enforcing
   a time delay before scaling down, or by tolerating resource values that are higher than our computed
   values - or both.  We currently always scale up immediately.
@@ -38,8 +36,8 @@ A ScalingPolicy object targets a single deployment / replicaset / daemonset.
 
 There is a list of containers, each of which can have resource limits & requests.  Where Pods have 
 resources directly specified in a map, a ScalingPolicy has a list of resource rules, which specify an
-the target resource and the input function which produce the target value for the resource from an input
-- currently `cores` `memory` or `nodes`.
+the target resource and the input function which produce the target value for the resource from an
+input - currently `cores` `memory` or `nodes`.
 
 The scaling function is defined by a `base` value, and then a `slope` which multiples an `input` value.
 So `200m + (cores * 10m)` maps to `base: 200m`, `input: cores`, `slope: 10m`.  To allow for a slope
