@@ -97,7 +97,7 @@ type ResourceScalingRule struct {
 }
 
 type ResourceScalingFunction struct {
-	// Input is the source value to use as the input to scaling
+	// Input is the source value to use as the input to scaling: `cores`, `memory`, `nodes`
 	Input string `json:"input,omitempty"`
 
 	// Base is the constant resource value we use regardless of input, the y-axis intercept
@@ -115,7 +115,6 @@ type ResourceScalingFunction struct {
 	// This is typically used so that we resize for every input unit for small cluster,
 	// but for larger clusters we only resize for changes of N units or more.
 	// Where it is not otherwise defined, we assume a first value of { at: 0, every: 1 }
-	// TODO: Does this replace QuantizationRule
 	Segments []ResourceScalingSegment `json:"segments,omitempty"`
 
 	DelayScaleDown *DelayScaling `json:"delayScaleDown,omitempty"`

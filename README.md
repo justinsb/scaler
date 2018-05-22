@@ -11,10 +11,18 @@ To compute the resources for a target:
 
 * We observe various inputs (number of nodes, sum of node cores, sum of node memory etc)
 * ScalingPolicies explicitly transform those inputs into an "optimum" value for resource requests & limits
-  for daemonsets / deployments / replicasets.  For example, cpu might be modelled as `200m + (coreCount * 10m)`.
-* We can optionally apply Smoothing, so that oscillations (for example during a rolling-update) won't result in
-  the targeted resources "flapping".
-* We can optionally apply Quantization, so that the final value will be a human sensible-value. i.e. 256m, not 253m.
+  for daemonsets / deployments / replicasets.  For example, cpu might be modelled as `200m + (cores * 10m)`.
+  We don't support expressions via a DSL, but rather via fields in the API (e.g. `base: 200m`, `input: cores`, `slope: 10m`).
+* When we must restart the target pods when we change the resources, so we try to avoid scaling them for every input change.
+  We would like to avoid oscillations (for example during a rolling-update) resulting in
+  rapid-rescaling the targeted resources.
+* The first way we avoid rapid-rescaling is by defining `segments`; which round the input value up to a multiple
+  of an interval called `every`.  Each segment applies to a different range of input values, and this lets
+  us express the idea that at small scale we care about every core, but at larger scale we probably value
+  avoiding restarts more than having the optimal value.
+* The second way we avoid rapid-rescaling is that we delay scaling down - either by enforcing
+  a time delay before scaling down, or by tolerating resource values that are higher than our computed
+  values - or both.  We currently always scale up immediately.
 
 We repeat this operation at a regular interval (e.g. every 10 seconds) to compute the target values.  We run
 a second periodic task which applies the updated resources whenever they are out of date.  Running two loops allows
@@ -30,27 +38,25 @@ A ScalingPolicy object targets a single deployment / replicaset / daemonset.
 
 There is a list of containers, each of which can have resource limits & requests.  Where Pods have 
 resources directly specified in a map, a ScalingPolicy has a list of resource rules, which specify an
-input value and apply a function to produce the target value for the resource.
+the target resource and the input function which produce the target value for the resource from an input
+- currently `cores` `memory` or `nodes`.
 
-It is possible to have multiple rules targeting the same container resource.  The values will be added.
+The scaling function is defined by a `base` value, and then a `slope` which multiples an `input` value.
+So `200m + (cores * 10m)` maps to `base: 200m`, `input: cores`, `slope: 10m`.  To allow for a slope
+of less than 1m per input value, we also define a field `per` which divides the `input`.
 
-TODO: The intent here is to allow for growth based on e.g. endpoints _and_ pods.  Is this useful?  Should we add
-or do max?
+We have input `segments` which start `at` a particular input value, and then round
+the input value to the next multiple of `every`.
 
-Each resource can be quantized with a quantization policy.  Quantization is primarily to "snap" values
-to more convenient multiples for humans (e.g. steps of 50m CPU), but also helps to avoid flapping.
+We also have a `delayScaleDown` block which lets us specify the `delaySeconds` we will delay before scaling down,
+and the `max` input skew we tolerate in the output value.  As an example, with our
+function of `200m + (cores * 10m)` the target would be 280m, so if the resource on the target was more than 280m
+we would scale down - possibly after `delaySeconds`.  If the `max` was 2, we would only scale down if the target was
+more than 300m (`200m + ((8 + 2) * 10m)`).
 
-The smoothing policy is specified at ScalingPolicy level.  If not specified, the default is no smoothing, so the resulting
-value will be applied to the pod whenever the target differs from the actual value, which can result in rapid pod bouncing.
-Quantization helps, but there are still transitional values where the output will flap.
-
-An alternative smoothing policy is supported, which tracks the target value over a sliding window.  The smoothing policy
-can specify a target percentile value (default 80%), along with a tolerable range (defaults to 70%-90%).  The target resources
-will only be updated when the actual value is outside of the tolerable range.
+// TODO: At & Every don't work for values like 2G for total memory - they're both integers.  Nor does Per.  Make them resources?  Define memory in MB?
 
 // TODO: Need better names for the computed target value vs the actual resources of the target.
-
-// TODO: Make sliding window time configurable.  Other policies?
 
 // TODO: Publish prometheus metrics so these calculations are very visible and it is easy for operators to determine the correct policy
 
@@ -71,22 +77,23 @@ spec:
     resources:
       limits:
       - resource: cpu
-        base: 200m
-        input: cores
-        step: 10m
+        function:
+          base: 200m
+          input: cores
+          slope: 10m
+          segments:
+          - at: 4
+            every: 4
+          - at: 32
+            every: 8
+          - at: 256
+            every: 64
       requests:
       - resource: cpu
-        base: 100m
-    quantization:
-    - resource: cpu
-      step: 10m
-      stepRatio: 2.0
-      maxStep: 1000m
-  smoothing:
-    percentile:
-      target: 0.80
-      lowThreshold: 0.70
-      highThreshold: 0.90
+        function:
+          base: 100m
+          delayScaling:
+            delaySeconds: 30
 ```
 
 # Operator configurations
@@ -111,4 +118,4 @@ We also define a "priority" field, which determines the order in which policies 
 
 // TODO: Examples of merging
 
-// TODO: Implement this!
+// TODO: Implement this - or just use kustomize!
