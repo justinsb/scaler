@@ -1,4 +1,5 @@
-DOCKER_REGISTRY?=$(shell whoami)
+DOCKER_REGISTRY?=index.docker.io
+DOCKER_IMAGE_PREFIX?=$(shell whoami)/
 DOCKER_TAG?=latest
 
 .PHONY: scale
@@ -33,7 +34,7 @@ push:
 .PHONY: images
 images:
 	bazel run //images:scaler
-	docker tag bazel/images:scaler ${DOCKER_REGISTRY}/scaler:${DOCKER_TAG}
+	docker tag bazel/images:scaler ${DOCKER_IMAGE_PREFIX}scaler:${DOCKER_TAG}
 
 bounce:
 	kubectl delete pod -n kube-system -l k8s-addon=scaler

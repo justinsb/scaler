@@ -1,0 +1,7 @@
+steps:
+- name: gcr.io/cloud-builders/bazel
+  args: ['run', '//images:push-scaler']
+  env:
+  - 'DOCKER_REGISTRY=${_DOCKER_REGISTRY}'
+  - 'DOCKER_IMAGE_PREFIX=${_DOCKER_IMAGE_PREFIX}'
+  - 'DOCKER_TAG=${COMMIT_SHA}'
