@@ -1,7 +1,7 @@
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG?=latest
 
-.PHONY: scale
+.PHONY: scaler
 scaler:
 	bazel build //cmd/scaler
 
@@ -13,7 +13,7 @@ gazelle:
 goimports:
 	goimports -w cmd/ pkg/
 
-.PHONY: dep
+.PHONY: dep-ensure
 dep-ensure:
 	dep ensure
 	find vendor/ -name "BUILD" -delete

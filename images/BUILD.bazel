@@ -6,7 +6,6 @@ load(
     "container_push",
 )
 
-# TODO: Probably need kmod also
 container_image(
     name = "scaler",
     base = "@debian_base_amd64//image",
@@ -18,11 +17,11 @@ container_image(
 )
 
 container_push(
-   name = "push-scaler",
-   image = ":scaler",
-   format = "Docker",
-   registry = "index.docker.io",
-   repository = "{STABLE_DOCKER_REGISTRY}/scaler",
-   stamp = True,
-   tag = "{STABLE_DOCKER_TAG}",
+    name = "push-scaler",
+    format = "Docker",
+    image = ":scaler",
+    registry = "index.docker.io",
+    repository = "{STABLE_DOCKER_REGISTRY}/scaler",
+    stamp = True,
+    tag = "{STABLE_DOCKER_TAG}",
 )
