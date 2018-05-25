@@ -21,8 +21,8 @@ container_push(
    name = "push-scaler",
    image = ":scaler",
    format = "Docker",
-   registry = "index.docker.io",
-   repository = "{STABLE_DOCKER_REGISTRY}/scaler",
+   registry = "{STABLE_DOCKER_REGISTRY}",
+   repository = "{STABLE_DOCKER_IMAGE_PREFIX}scaler",
    stamp = True,
    tag = "{STABLE_DOCKER_TAG}",
 )
